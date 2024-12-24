@@ -25,6 +25,7 @@ import utils
 from api import cat, cls, dir_has, dirsize
 from log import *
 from utils import JsonEdit, SetUtils, gettype, simg2img, versize
+import tikpath
 
 LOCALDIR = os.getcwd()
 SETTINGS_PATH = os.path.join(LOCALDIR, "config", "settings.json")
@@ -32,278 +33,35 @@ settings = SetUtils(SETTINGS_PATH)
 settings.load_set()
 
 
-def get_binary_path(bname: str) -> str:
+def write_project_path(project_path: str):
+    with open("config/project_path", "w") as f:
+        f.write(project_path)
+
+
+def get_project_path() -> str:
     """
-    获取二进制文件的路径
-    :param bname: 二进制文件名
-    :return: 二进制文件路径
+    获取当前项目路径
+    :return: 项目路径
     """
-    global LOCALDIR
-    BIN_PATH = os.path.join(LOCALDIR, "bin")
-
-    arch_type = platform.machine()
-    os_type = platform.system()
-
-    # find binary from here
-    SUITABLE_BIN_PATH = os.path.join(BIN_PATH, os_type, arch_type) + os.sep
-    return os.path.join(SUITABLE_BIN_PATH, bname)
+    return os.getcwd()
 
 
-class Setting:
-    def settings1(self):
-        actions = {
-            "1": lambda: settings.change(
-                "brcom",
-                (
-                    brcom
-                    if (
-                        brcom := input(
-                            f"  调整brotli压缩等级(整数1-9，级别越高，压缩率越大，耗时越长):"
-                        )
-                    ).isdigit()
-                    and 0 < int(brcom) < 10
-                    else "1"
-                ),
-            ),
-            "2": lambda: settings.change(
-                "diysize",
-                "1" if input("  打包Ext镜像大小[1]动态最小 [2]原大小:") == "2" else "",
-            ),
-            "3": lambda: settings.change(
-                "pack_e2",
-                (
-                    "0"
-                    if input("  打包方案: [1]make_ext4fs [2]mke2fs+e2fsdroid:") == "1"
-                    else "1"
-                ),
-            ),
-            "6": lambda: settings.change(
-                "pack_sparse",
-                (
-                    "1"
-                    if input("  Img是否打包为sparse镜像(压缩体积)[1/0]\n  请输入序号:")
-                    == "1"
-                    else "0"
-                ),
-            ),
-            "7": lambda: settings.change(
-                "diyimgtype",
-                "1" if input(f"  打包镜像系统[1]同解包格式 [2]可选择:") == "2" else "",
-            ),
-            "8": lambda: settings.change(
-                "erofs_old_kernel",
-                "1" if input(f"  EROFS打包是否支持旧内核[1/0]") == "1" else "0",
-            ),
-        }
-        cls()
-        print(
-            f"""
-        \033[33m  > 打包设置 \033[0m
-           1> Brotli 压缩等级 \033[93m[{settings.brcom}]\033[0m\n
-           ----[EXT4设置]------
-           2> 大小处理 \033[93m[{settings.diysize}]\033[0m
-           3> 打包方式 \033[93m[{settings.pack_e2}]\033[0m\n
-           ----[EROFS设置]-----
-           4> 压缩方式 \033[93m[{settings.erofslim}]\033[0m\n
-           ----[IMG设置]-------
-           5> UTC时间戳 \033[93m[{settings.utcstamp}]\033[0m
-           6> 创建sparse \033[93m[{settings.pack_sparse}]\033[0m
-           7> 文件系统 \033[93m[{settings.diyimgtype}]\033[0m
-           8> 支持旧内核 \033[93m[{settings.erofs_old_kernel}]\033[0m\n
-           0>返回上一级菜单
-           --------------------------
-        """
-        )
-        op_pro = input("   请输入编号:")
-        if op_pro == "0":
-            return
-        elif op_pro in actions.keys():
-            actions[op_pro]()
-        elif op_pro == "4":
-            if input("  选择erofs压缩方式[1]是 [2]否:") == "1":
-                erofslim = input(
-                    "  选择erofs压缩方式：lz4/lz4hc/lzma/和压缩等级[1-9](数字越大耗时更长体积更小) 例如 lz4hc,8:"
-                )
-                settings.change("erofslim", erofslim if erofslim else "lz4hc,8")
-            else:
-                settings.change("erofslim", "lz4hc,8")
-        elif op_pro == "5":
-            if input("  设置打包UTC时间戳[1]自动 [2]自定义:") == "2":
-                utcstamp = input("  请输入: ")
-                settings.change(
-                    "utcstamp", utcstamp if utcstamp.isdigit() else "1717840117"
-                )
-            else:
-                settings.change("utcstamp", "")
-        else:
-            print("Input error!")
-        self.settings1()
-
-    def settings2(self):
-        cls()
-        actions = {
-            "1": lambda: settings.change(
-                "super_group",
-                (
-                    super_group
-                    if (super_group := input(f"  请输入（无特殊字符）:"))
-                    else "qti_dynamic_partitions"
-                ),
-            ),
-            "2": lambda: settings.change(
-                "metadatasize",
-                (
-                    metadatasize
-                    if (
-                        metadatasize := input(
-                            "  设置metadata最大保留size(默认为65536，至少512):"
-                        )
-                    )
-                    else "65536"
-                ),
-            ),
-            "3": lambda: settings.change(
-                "BLOCKSIZE",
-                (
-                    BLOCKSIZE
-                    if (
-                        BLOCKSIZE := input(
-                            f"  分区打包扇区/块大小：{settings.BLOCKSIZE}\n  请输入: "
-                        )
-                    )
-                    else "4096"
-                ),
-            ),
-            "4": lambda: settings.change(
-                "BLOCKSIZE",
-                (
-                    SBLOCKSIZE
-                    if (
-                        SBLOCKSIZE := input(
-                            f"  分区打包扇区/块大小：{settings.SBLOCKSIZE}\n  请输入: "
-                        )
-                    )
-                    else "4096"
-                ),
-            ),
-            "5": lambda: settings.change(
-                "supername",
-                (
-                    supername
-                    if (
-                        supername := input(
-                            f"  当前动态分区物理分区名(默认super)：{settings.supername}\n  请输入（无特殊字符）: "
-                        )
-                    )
-                    else "super"
-                ),
-            ),
-            "6": lambda: settings.change(
-                "fullsuper",
-                "" if input("  是否强制创建Super镜像？[1/0]") != "1" else "-F",
-            ),
-            "7": lambda: settings.change(
-                "autoslotsuffixing",
-                "" if input("  是否标记需要Slot后缀的分区？[1/0]") != "1" else "-x",
-            ),
-        }
-        print(
-            f"""
-        \033[33m  > 动态分区设置 \033[0m
-           1> Super簇名 \033[93m[{settings.super_group}]\033[0m\n
-           ----[Metadata设置]--
-           2> 最大保留Size \033[93m[{settings.metadatasize}]\033[0m\n
-           ----[分区设置]------
-           3> 默认扇区/块大小 \033[93m[{settings.BLOCKSIZE}]\033[0m\n
-           ----[Super设置]-----
-           4> 指定block大小 \033[93m[{settings.SBLOCKSIZE}]\033[0m
-           5> 更改物理分区名 \033[93m[{settings.supername}]\033[0m
-           6> 强制生成完整Img \033[93m[{settings.fullsuper}]\033[0m
-           7> 标记分区槽后缀 \033[93m[{settings.autoslotsuffixing}]\033[0m\n
-           0>返回上一级菜单
-           --------------------------
-        """
-        )
-        op_pro = input("   请输入编号: ")
-        if op_pro == "0":
-            return
-        elif op_pro in actions.keys():
-            actions[op_pro]()
-        else:
-            wrap_red("Input error!")
-        self.settings2()
-
-    def settings3(self):
-        cls()
-        print(
-            f"""
-    \033[33m  > 工具设置 \033[0m\n
-       1>联网模式 \033[93m[{settings.online}]\033[0m\n
-       2>Contexts修补 \033[93m[{settings.context}]\033[0m\n
-       0>返回上级\n
-       --------------------------
-            """
-        )
-        op_pro = input("   请输入编号: ")
-        if op_pro == "0":
-            return
-        elif op_pro == "1":
-            settings.change("online", "false" if settings.online == "true" else "true")
-        elif op_pro == "2":
-            settings.change(
-                "context", "false" if settings.context == "true" else "true"
-            )
-        self.settings3()
-
-    @staticmethod
-    def settings4():
-        cls()
-        print(f"\033[31m {banner.banner1} \033[0m")
-        print("\033[96m 开源的安卓全版本ROM处理工具\033[0m")
-        print("\033[31m---------------------------------\033[0m")
-        print(f"\033[93m作者:\033[0m \033[92mColdWindScholar\033[0m")
-        print(
-            f"\033[93m开源地址:\033[0m \033[91mhttps://github.com/ColdWindScholar/TIK\033[0m"
-        )
-        print(f"\033[93m软件版本:\033[0m \033[44mAlpha Edition\033[0m")
-        print(
-            f"\033[93m开源协议:\033[0m \033[68mGNU General Public License v3.0 \033[0m"
-        )
-        print("\033[31m---------------------------------\033[0m")
-        print(f"\033[93m特别鸣谢:\033[0m")
-        print("\033[94mAffggh")
-        print("Yeliqin666")
-        print("YukongA")
-        print("\033[0m")
-        input("\033[31m---------------------------------\033[0m")
-
-    def __init__(self):
-        cls()
-        print(
-            """
-    \033[33m  > 设置 \033[0m
-       1>[打包]相关设置\n
-       2>[动态分区]相关设置\n
-       3>工具设置\n
-       4>关于工具\n
-       0>返回主页
-       --------------------------
-    """
-        )
-        op_pro = input("   请输入编号: ")
-        if op_pro == "0":
-            return
-        try:
-            getattr(self, "settings%s" % op_pro)()
-            self.__init__()
-        except AttributeError as e:
-            print(f"Input error!{e}")
-            self.__init__()
+def dis_avb(fstab: str):
+    print(f"正在处理: {fstab}")
+    if not os.path.exists(fstab):
+        return
+    with open(fstab, "r") as sf:
+        details = sf.read()
+    details = re.sub("avb=vbmeta_system,", "", details)
+    details = re.sub("avb,", "", details)
+    details = re.sub(",avb_keys=.*avbpubkey", "", details)
+    with open(fstab, "w") as tf:
+        tf.write(details)
 
 
 class Tool:
     """
-    Free Android Rom Tool
+    主程序的主循环
     """
 
     def __init__(self):
@@ -317,8 +75,11 @@ class Tool:
         # skip them when recognize projects
         self.WHITELIST = ["bin", "ksu-derviers", "__pycache__", "config"]
 
+    def user_continue(self):
+        input("任意按钮继续")
+
     def greet(self):
-        print(f'\033[31m {getattr(banner, "banner%s" % settings.banner)} \033[0m')
+        print(f"\033[31m {banner.banner1} \033[0m")
         print("\033[93;44m Alpha Edition \033[0m")
 
         if settings.online == "true":
@@ -328,9 +89,9 @@ class Tool:
                         "https://v1.jinrishici.com/all.json", timeout=2
                     ).content.decode()
                 )
-                shiju = content["content"]
-                fr = content["origin"]
-                another = content["author"]
+                shiju = content.get("content")
+                fr = content.get("origin")
+                another = content.get("author")
             except (Exception, BaseException):
                 print(f"\033[36m “开源，是一场无问西东的前行”\033[0m\n")
             else:
@@ -340,9 +101,6 @@ class Tool:
             print(f"\033[36m “开源，是一场无问西东的前行”")
 
     def main(self):
-        # change the working directory to the project directory
-        os.chdir(self.local_dir)
-
         # key-value pairs of the projects(number: project_name)
         project_num = 0
         projects = {}
@@ -350,9 +108,9 @@ class Tool:
         # clear the screen and show the banner
         cls()
         self.greet()
-
-        print(" >\033[33m 项目列表 \033[0m\n")
-        print("\033[31m   [00]  删除项目\033[0m\n\n", "  [0]  新建项目\n")
+        print(f" >{utils.yellow(' 项目列表 ')}")
+        print(utils.red("   [00]  删除项目"))
+        print(utils.green("   [0]  新建项目"))
 
         # list all of the projects
         for project_dir in os.listdir(self.local_dir):
@@ -381,20 +139,20 @@ class Tool:
                     print_red("取消删除")
             else:
                 print_red("  项目不存在！")
-                input("任意按钮继续")
+                self.user_continue()
 
         elif op_pro == "0":
             new_project_name = input("请输入项目名称(非中文)：")
             if new_project_name:
                 if os.path.exists(os.path.join(self.local_dir, new_project_name)):
                     wrap_red(f"项目已存在！请更换名称")
-                    input("任意按钮继续")
+                    self.user_continue()
                 os.makedirs(os.path.join(self.local_dir, new_project_name, "config"))
                 os.makedirs(os.path.join(self.local_dir, new_project_name, "TI_out"))
                 print_green(f"项目{new_project_name}创建成功！")
             else:
                 print_red("  Input error!")
-                input("任意按钮继续")
+                self.user_continue()
 
         elif op_pro == "88":
             cls()
@@ -402,7 +160,8 @@ class Tool:
             sys.exit(0)
 
         elif op_pro == "77":
-            Setting()
+            print_red("设计中...")
+            self.user_continue()
 
         # enter to the working project
         elif op_pro.isdigit():
@@ -413,35 +172,21 @@ class Tool:
                 self.project()
             else:
                 print_red("  Input error!")
-                input("任意按钮继续")
+                self.user_continue()
 
         else:
             print_red("  Input error!")
-            input("任意按钮继续")
+            self.user_continue()
 
         # back to the main menu
         self.main()
-
-    @staticmethod
-    def dis_avb(fstab: str):
-        print(f"正在处理: {fstab}")
-        if not os.path.exists(fstab):
-            return
-        with open(fstab, "r") as sf:
-            details = sf.read()
-        details = re.sub("avb=vbmeta_system,", "", details)
-        details = re.sub("avb,", "", details)
-        details = re.sub(",avb_keys=.*avbpubkey", "", details)
-        with open(fstab, "w") as tf:
-            tf.write(details)
 
     @staticmethod
     def dis_data_encryption(fstab): ...
 
     def project(self):
         cls()
-        # change the working directory
-        os.chdir(self.project_root)
+        tikpath.set_project_path(self.project_name)
 
         print(utils.red("> 项目菜单"))
         (
@@ -465,10 +210,10 @@ class Tool:
             return
 
         elif op_menu == "1":
-            unpack_choo(self.project_root)
+            unpack_choo()
 
         elif op_menu == "2":
-            pack_choo(self.project_root)
+            pack_choo()
 
         elif op_menu == "3":
             self.custom_rom()
@@ -483,13 +228,13 @@ class Tool:
 
         else:
             wrap_red("   Input error!")
-            input("任意按钮继续")
+            self.user_continue()
 
         self.project()
 
     def slim_partition(self):
         print_red("暂未支持")
-        input("任意按钮继续")
+        self.user_continue()
         pass
 
     def custom_rom(self):
@@ -512,13 +257,13 @@ class Tool:
             for root, dirs, files in os.walk(LOCALDIR + os.sep + self.project_name):
                 for file in files:
                     if file.startswith("fstab."):
-                        self.dis_avb(os.path.join(root, file))
+                        dis_avb(os.path.join(root, file))
         elif op_menu == "5":
             wrap_red("暂未支持")
             ...
         else:
             wrap_red("   Input error!")
-        input("任意按钮继续")
+        self.user_continue()
         self.custom_rom()
 
     def ksu_patch(self):
@@ -554,9 +299,9 @@ class Tool:
                 return
 
             os.system(
-                rf"{get_binary_path('ksud')} boot-patch \
+                rf"{tikpath.get_binary_path('ksud')} boot-patch \
                     -b {boots[op_menu]} \
-                    --magiskboot {get_binary_path('magiskboot')} \
+                    --magiskboot {tikpath.get_binary_path('magiskboot')} \
                     --kmi={kmi.get(kmi_choice)} \
                     --out {project}"
             )
@@ -566,15 +311,16 @@ class Tool:
             return
         else:
             wrap_red("Input Error!")
-        input("任意按钮继续")
+        self.user_continue()
         self.project()
 
     def apatch_patch(self): ...
 
 
-def unpack_choo(project_dir: str):
+def unpack_choo():
     """解包前端"""
     cls()
+    project_dir = tikpath.PROJECT_PATH
     os.chdir(project_dir)
     print(" \033[31m >分解 \033[0m\n")
     filen = 0
@@ -597,19 +343,6 @@ def unpack_choo(project_dir: str):
                     )
                     files[filen] = img0
                     infos[filen] = "img" if info != "sparse" else "sparse"
-
-    if dir_has(project_dir, ".dtb"):
-        print("\033[33m [Dtb]文件\033[0m\n")
-        for dtb0 in os.listdir(project_dir):
-            if dtb0.endswith(".dtb"):
-                if (
-                    os.path.isfile(os.path.abspath(dtb0))
-                    and gettype(os.path.abspath(dtb0)) == "dtb"
-                ):
-                    filen += 1
-                    print(f"   [{filen}]- {dtb0}\n")
-                    files[filen] = dtb0
-                    infos[filen] = "dtb"
 
     print("\n\033[33m  [00] 返回  [77] 循环解包  \033[0m")
     print("  --------------------------------------")
@@ -642,12 +375,13 @@ def unpack_choo(project_dir: str):
         wrap_red("Input error!")
 
     input("任意按钮继续")
-    unpack_choo(project_dir)
+    unpack_choo()
 
 
-def pack_choo(project_dir: str):
+def pack_choo():
     """打包前端"""
     cls()
+    project_dir = tikpath.PROJECT_PATH
     print(" \033[31m >打包 \033[0m\n")
     partn = 0
     parts = {}
@@ -760,13 +494,13 @@ def pack_choo(project_dir: str):
                 elif types[int(filed)] == "dtbo":
                     makedtbo(parts[int(filed)], project_dir)
                 else:
-                    pack_img(project_dir, parts[int(filed)], imgtype, israw, json_)
+                    pack_img(project_dir, parts[int(filed)], imgtype, israw)
             else:
                 wrap_red("Input error!")
         else:
             wrap_red("Input error!")
         input("任意按钮继续")
-        pack_choo(project_dir)
+        pack_choo()
 
 
 def dboot(infile, orig):
@@ -783,7 +517,7 @@ def dboot(infile, orig):
 
         os.system(
             'busybox ash -c "find | sed 1d | %s -H newc -R 0:0 -o -F ../ramdisk-new.cpio"'
-            % {get_binary_path("cpio")},
+            % {tikpath.get_binary_path("cpio")},
         )
         os.chdir(infile)
         with open("comp", "r", encoding="utf-8") as compf:
@@ -943,7 +677,7 @@ def undtbo(project, infile):
             print_yellow(f"正在反编译{dtbo_files}为{dts_files}")
             dtbofiles = dtbodir + os.sep + "dtbo_files" + os.sep + dtbo_files
             command = [
-                get_binary_path("dtc"),
+                tikpath.get_binary_path("dtc"),
                 "-@",
                 "-I dtb",
                 "-O dts",
@@ -977,7 +711,7 @@ def makedtbo(sf, project):
         print_yellow(f"正在回编译{dts_files}为{new_dtbo_files}")
         dtb_ = dtbodir + os.sep + "dts_files" + os.sep + dts_files
         command = [
-            get_binary_path("dtc"),
+            tikpath.get_binary_path("dtc"),
             "-@",
             "-I dts",
             "-O dtb",
@@ -1011,20 +745,16 @@ def pack_img(
     img_name: str,
     img_type: Literal["ext", "erofs", "f2fs"],
     israw: bool,
-    json_=None,
 ):
-    if json_ is None:
-        json_ = {}
     print(f"project_dir:{project_dir}")
-    file_contexts = (
-        project_dir + os.sep + "config" + os.sep + img_name + "_file_contexts"
-    )
-    fs_config = project_dir + os.sep + "config" + os.sep + img_name + "_fs_config"
+    file_contexts = tikpath.get_file_contexts(img_name)
+    fs_config = tikpath.get_fs_config(img_name)
 
     utc = int(time.time()) if not settings.utcstamp else settings.utcstamp
-    out_img = project_dir + os.sep + "TI_out" + os.sep + img_name + ".img"
 
-    in_files = project_dir + os.sep + img_name + os.sep
+    out_img = tikpath.get_out_img_path(img_name)
+
+    in_files = tikpath.get_input_for_image(img_name)
 
     img_size0 = (
         int(cat(project_dir + os.sep + "config" + os.sep + img_name + "_size.txt"))
@@ -1057,18 +787,8 @@ def pack_img(
     size = img_size0 / int(settings.BLOCKSIZE)
     size = int(size)
     if img_type == "erofs":
-        # print(
-        #     rf"mkfs.erofs \
-        #         -z{settings.erofslim} \
-        #         -T {utc} \
-        #         --mount-point=/{img_name} \
-        #         --fs-config-file={fs_config} \
-        #         --file-contexts={file_contexts} \
-        #         {out_img} \
-        #         {in_files}"
-        # )
         os.system(
-            rf"{get_binary_path('mkfs.erofs')} \
+            rf"{tikpath.get_binary_path('mkfs.erofs')} \
                 -z{settings.erofslim} \
                 -T {utc} \
                 --mount-point=/{img_name} \
@@ -1083,7 +803,7 @@ def pack_img(
         with open(out_img, "wb") as f:
             f.truncate(size_f2fs)
         os.system(
-            rf"{get_binary_path('mkfs.f2fs')} {out_img} \
+            rf"{tikpath.get_binary_path('mkfs.f2fs')} {out_img} \
                 -O extra_attr \
                 -O inode_checksum \
                 -O sb_checksum \
@@ -1091,7 +811,7 @@ def pack_img(
                 -f"
         )
         os.system(
-            rf"{get_binary_path('sload.f2fs')} \
+            rf"{tikpath.get_binary_path('sload.f2fs')} \
                 -f {in_files} \
                 -C {fs_config} \
                 -s {file_contexts} \
@@ -1102,7 +822,7 @@ def pack_img(
     else:
         if os.path.exists(file_contexts):
             os.system(
-                rf"{get_binary_path('mke2fs')} \
+                rf"{tikpath.get_binary_path('mke2fs')} \
                     -O ^has_journal \
                     -L {img_name} \
                     -I 256 \
@@ -1114,7 +834,7 @@ def pack_img(
                     {size}"
             )
             os.system(
-                rf"{get_binary_path('e2fsdroid')} -e \
+                rf"{tikpath.get_binary_path('e2fsdroid')} -e \
                     -T {utc} \
                     -S {file_contexts} \
                     -C {fs_config} \
@@ -1283,11 +1003,10 @@ def unpack(file, info, project):
     if not os.path.exists(file):
         file = os.path.join(project, file)
 
-    json_ = JsonEdit(os.path.join(project, "config", "parts_info"))
-    parts = json_.read()
-    if not os.path.exists(project + os.sep + "config"):
-        os.makedirs(project + os.sep + "config")
+    
+
     print_yellow(f"[{info}]解包{os.path.basename(file)}中...")
+
     if info == "sparse":
         simg2img(os.path.join(project, file))
         unpack(file, gettype(file), project)
@@ -1296,7 +1015,6 @@ def unpack(file, info, project):
     elif info == "dtb":
         undtb(project, os.path.abspath(file))
     elif info == "img":
-        parts[os.path.basename(file).split(".")[0]] = gettype(file)
         unpack(file, gettype(file), project)
     elif info == "ext":
         with open(file, "rb+") as e:
@@ -1318,11 +1036,11 @@ def unpack(file, info, project):
             ...
     elif info == "erofs":
         os.system(
-            f"{get_binary_path('extract.erofs')} -i {os.path.abspath(file)} -o {project} -x"
+            f"{tikpath.get_binary_path('extract.erofs')} -i {os.path.abspath(file)} -o {project} -x"
         )
     elif info == "f2fs" and os.name == "posix":
         os.system(
-            f"{get_binary_path('extract.f2fs')} -o {project} {os.path.abspath(file)}"
+            f"{tikpath.get_binary_path('extract.f2fs')} -o {project} {os.path.abspath(file)}"
         )
     elif info == "super":
         lpunpack.unpack(os.path.abspath(file), project)

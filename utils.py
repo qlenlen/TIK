@@ -25,20 +25,20 @@ binner = elocal + os.sep + "bin"
 ebinner = binner + os.sep + ostype + os.sep + platform + os.sep
 
 
-def yellow(text):
-    return f"\033[33m{text}\033[0m\n"
+def yellow(text, needN=True):
+    return f"\033[33m{text}\033[0m\n" if needN else f"\033[33m{text}\033[0m"
 
 
-def green(text):
-    return f"\033[32m{text}\033[0m\n"
+def green(text, needN=True):
+    return f"\033[32m{text}\033[0m\n" if needN else f"\033[32m{text}\033[0m"
 
 
-def red(text):
-    return f"\033[31m{text}\033[0m\n"
+def red(text, needN=True):
+    return f"\033[31m{text}\033[0m\n" if needN else f"\033[31m{text}\033[0m"
 
 
-def blue(text):
-    return f"\033[36m{text}\033[0m\n"
+def blue(text, needN=True):
+    return f"\033[36m{text}\033[0m\n" if needN else f"\033[36m{text}\033[0m"
 
 
 class JsonEdit:
@@ -62,13 +62,6 @@ class JsonEdit:
         data = self.read()
         data[name] = value
         self.write(data)
-
-
-def get_all_file_paths(directory) -> Generator:
-    # 初始化文件路径列表
-    for root, directories, files in os.walk(directory):
-        for filename in files:
-            yield os.path.join(root, filename)
 
 
 def versize(size):

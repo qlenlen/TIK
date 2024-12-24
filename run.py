@@ -2,6 +2,7 @@
 
 import os
 import sys
+import tikpath
 
 from core import Tool
 
@@ -16,4 +17,7 @@ else:
 
 
 if __name__ == "__main__":
+    # configure the path
+    tikpath.init()
+
     Tool().main()
