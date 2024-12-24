@@ -148,7 +148,7 @@ class SparseHeader(object):
             self.total_blks,  # total blocks in the non-sparse output image
             self.total_chunks,  # total chunks in the sparse input image
             self.image_checksum,  # CRC32 checksum of the original data, counting "don't care"
-        ) = struct.unpack(fmt, buffer[0 : struct.calcsize(fmt)])
+        ) = struct.unpack(fmt, buffer[0: struct.calcsize(fmt)])
 
 
 class SparseChunkHeader(object):
@@ -166,7 +166,7 @@ class SparseChunkHeader(object):
             self.reserved,
             self.chunk_sz,  # in blocks in output image * /
             self.total_sz,  # in bytes of chunk input file including chunk header and data * /
-        ) = struct.unpack(fmt, buffer[0 : struct.calcsize(fmt)])
+        ) = struct.unpack(fmt, buffer[0: struct.calcsize(fmt)])
 
 
 class LpMetadataBase:
@@ -203,7 +203,7 @@ class LpMetadataGeometry(LpMetadataBase):
             self.metadata_max_size,
             self.metadata_slot_count,
             self.logical_block_size,
-        ) = struct.unpack(self._fmt, buffer[0 : struct.calcsize(self._fmt)])
+        ) = struct.unpack(self._fmt, buffer[0: struct.calcsize(self._fmt)])
         # self.size
 
 
@@ -251,7 +251,7 @@ class LpMetadataPartition(LpMetadataBase):
             self.first_extent_index,
             self.num_extents,
             self.group_index,
-        ) = struct.unpack(self._fmt, buffer[0 : struct.calcsize(self._fmt)])
+        ) = struct.unpack(self._fmt, buffer[0: struct.calcsize(self._fmt)])
 
         self.name = self.name.decode("utf-8").strip("\x00")
 
@@ -276,7 +276,7 @@ class LpMetadataExtent(LpMetadataBase):
 
     def __init__(self, buffer):
         (self.num_sectors, self.target_type, self.target_data, self.target_source) = (
-            struct.unpack(self._fmt, buffer[0 : struct.calcsize(self._fmt)])
+            struct.unpack(self._fmt, buffer[0: struct.calcsize(self._fmt)])
         )
 
 
@@ -338,7 +338,7 @@ class LpMetadataHeader(LpMetadataBase):
             self.header_checksum,
             self.tables_size,
             self.tables_checksum,
-        ) = struct.unpack(self._fmt, buffer[0 : struct.calcsize(self._fmt)])
+        ) = struct.unpack(self._fmt, buffer[0: struct.calcsize(self._fmt)])
         self.flags = 0
         # self.size
 
@@ -356,7 +356,7 @@ class LpMetadataPartitionGroup(LpMetadataBase):
 
     def __init__(self, buffer):
         (self.name, self.flags, self.maximum_size) = struct.unpack(
-            self._fmt, buffer[0 : struct.calcsize(self._fmt)]
+            self._fmt, buffer[0: struct.calcsize(self._fmt)]
         )
 
         self.name = self.name.decode("utf-8").strip("\x00")
@@ -402,7 +402,7 @@ class LpMetadataBlockDevice(LpMetadataBase):
             self.block_device_size,
             self.partition_name,
             self.flags,
-        ) = struct.unpack(self._fmt, buffer[0 : struct.calcsize(self._fmt)])
+        ) = struct.unpack(self._fmt, buffer[0: struct.calcsize(self._fmt)])
 
         self.partition_name = self.partition_name.decode("utf-8").strip("\x00")
 
@@ -522,7 +522,7 @@ class Metadata:
                         "group_name": self.groups[item.group_index].name,
                         "is_dynamic": True,
                         "size": self.extents[item.first_extent_index].num_sectors
-                        * LP_SECTOR_SIZE,
+                                * LP_SECTOR_SIZE,
                         "attributes": build_attribute_string(item.attributes),
                         "extents": self._get_extents_string(item),
                     }

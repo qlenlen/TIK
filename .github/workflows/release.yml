@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 jobs:
   build:
-    needs: [build-win, build-linux]
+    needs: [ build-win, build-linux ]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v4.1.8

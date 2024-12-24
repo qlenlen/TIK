@@ -321,8 +321,8 @@ class Extractor:
             + self.__out_name(os.path.basename(output_dir))
         )
         self.OUTPUT_IMAGE_FILE = (
-            os.path.realpath(os.path.dirname(target)) + os.sep
-        ) + os.path.basename(target)
+                                     os.path.realpath(os.path.dirname(target)) + os.sep
+                                 ) + os.path.basename(target)
         self.FileName = self.__out_name(os.path.basename(target), out=0)
         self.CONFIG_DIR = work + os.sep + "config"
         with open(self.OUTPUT_IMAGE_FILE, "rb+") as file:

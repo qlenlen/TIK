@@ -1,6 +1,5 @@
 import json
 import os
-import platform
 import re
 import shutil
 import subprocess
@@ -21,11 +20,11 @@ import fspatch
 import imgextractor
 import lpunpack
 import mkdtboimg
+import tikpath
 import utils
 from api import cat, cls, dir_has, dirsize
 from log import *
 from utils import JsonEdit, SetUtils, gettype, simg2img, versize
-import tikpath
 
 LOCALDIR = os.getcwd()
 SETTINGS_PATH = os.path.join(LOCALDIR, "config", "settings.json")
@@ -182,7 +181,8 @@ class Tool:
         self.main()
 
     @staticmethod
-    def dis_data_encryption(fstab): ...
+    def dis_data_encryption(fstab):
+        ...
 
     def project(self):
         cls()
@@ -314,7 +314,8 @@ class Tool:
         self.user_continue()
         self.project()
 
-    def apatch_patch(self): ...
+    def apatch_patch(self):
+        ...
 
 
 def unpack_choo():
@@ -1002,8 +1003,6 @@ def insuper(imgdir, outputimg, ssize, stype, sparsev, isreadonly):
 def unpack(file, info, project):
     if not os.path.exists(file):
         file = os.path.join(project, file)
-
-    
 
     print_yellow(f"[{info}]解包{os.path.basename(file)}中...")
 

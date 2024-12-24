@@ -71,7 +71,7 @@ class ext4_dir_entry_2(ext4_struct):
     @staticmethod
     def _from_buffer_copy(raw, offset=0, platform64=True):
         struct = ext4_dir_entry_2.from_buffer_copy(raw, offset)
-        struct.name = raw[offset + 0x8 : offset + 0x8 + struct.name_len]
+        struct.name = raw[offset + 0x8: offset + 0x8 + struct.name_len]
         return struct
 
 
@@ -414,7 +414,7 @@ class ext4_xattr_entry(ext4_struct):
     @staticmethod
     def _from_buffer_copy(raw, offset=0, platform64=True):
         struct = ext4_xattr_entry.from_buffer_copy(raw, offset)
-        struct.e_name = raw[offset + 0x10 : offset + 0x10 + struct.e_name_len]
+        struct.e_name = raw[offset + 0x10: offset + 0x10 + struct.e_name_len]
         return struct
 
     @property
@@ -516,8 +516,8 @@ class Volume:
         # Superblock
         self.superblock = self.read_struct(ext4_superblock, 0x400)
         self.platform64 = (
-            self.superblock.s_feature_incompat & ext4_superblock.INCOMPAT_64BIT
-        ) != 0
+                              self.superblock.s_feature_incompat & ext4_superblock.INCOMPAT_64BIT
+                          ) != 0
 
         if not ignore_magic and self.superblock.s_magic != 0xEF53:
             raise MagicError(
@@ -530,8 +530,8 @@ class Volume:
         )
 
         group_desc_table_offset = (
-            0x400 // self.block_size + 1
-        ) * self.block_size  # First block after superblock
+                                      0x400 // self.block_size + 1
+                                  ) * self.block_size  # First block after superblock
         for group_desc_idx in range(len(self.group_descriptors)):
             group_desc_offset = (
                 group_desc_table_offset + group_desc_idx * self.superblock.s_desc_size
@@ -697,11 +697,11 @@ class Inode:
             else:
                 # internal xattr
                 xattr_value = raw_data[
-                    xattr_entry.e_value_offs
-                    + offset : xattr_entry.e_value_offs
-                    + offset
-                    + xattr_entry.e_value_size
-                ]
+                              xattr_entry.e_value_offs
+                              + offset: xattr_entry.e_value_offs
+                                        + offset
+                                        + xattr_entry.e_value_size
+                              ]
 
             yield xattr_name, xattr_value
 
@@ -1066,8 +1066,8 @@ class BlockReader:
         if start_offset != 0:
             blocks[0] = blocks[0][start_offset:]
         byte_len = (
-            byte_len + start_offset - self.volume.block_size - 1
-        ) % self.volume.block_size + 1
+                       byte_len + start_offset - self.volume.block_size - 1
+                   ) % self.volume.block_size + 1
         blocks[-1] = blocks[-1][:byte_len]
 
         result = b"".join(blocks)

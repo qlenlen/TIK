@@ -2,8 +2,8 @@
 
 import os
 import sys
-import tikpath
 
+import tikpath
 from core import Tool
 
 # make the title
@@ -14,7 +14,6 @@ if os.name == "nt":
 else:
     sys.stdout.write("\x1b]2;TIK5_Alpha\x07")
     sys.stdout.flush()
-
 
 if __name__ == "__main__":
     # configure the path

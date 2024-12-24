@@ -4,9 +4,7 @@ import json
 import os
 import platform as plat
 import sys
-from random import choice, randint
 from threading import Thread
-from typing import Generator
 
 from rich.console import Console
 from rich.table import Table

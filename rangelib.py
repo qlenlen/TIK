@@ -38,7 +38,7 @@ class RangeSet(object):
 
     def __iter__(self):
         for i in range(0, len(self.data), 2):
-            yield self.data[i : i + 2]
+            yield self.data[i: i + 2]
 
     def __eq__(self, other):
         return self.data == other.data
@@ -117,7 +117,7 @@ class RangeSet(object):
     def to_string(self):
         out = []
         for i in range(0, len(self.data), 2):
-            s, e = self.data[i : i + 2]
+            s, e = self.data[i: i + 2]
             if e == s + 1:
                 out.append(str(s))
             else:
@@ -269,7 +269,7 @@ class RangeSet(object):
         """
         out = self
         for i in range(0, len(self.data), 2):
-            s, e = self.data[i : i + 2]
+            s, e = self.data[i: i + 2]
             s1 = max(0, s - n)
             e1 = e + n
             out = out.union(RangeSet(str(s1) + "-" + str(e1 - 1)))

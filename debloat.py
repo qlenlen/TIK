@@ -1,7 +1,8 @@
+import json
 import pathlib
 from dataclasses import dataclass
+
 import rich
-import json
 
 
 def error(msg: str):
