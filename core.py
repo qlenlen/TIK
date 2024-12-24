@@ -27,7 +27,7 @@ from log import *
 from utils import JsonEdit, SetUtils, gettype, simg2img, versize
 
 LOCALDIR = os.getcwd()
-SETTINGS_PATH = os.path.join(LOCALDIR, "bin", "settings.json")
+SETTINGS_PATH = os.path.join(LOCALDIR, "config", "settings.json")
 settings = SetUtils(SETTINGS_PATH)
 settings.load_set()
 
@@ -315,7 +315,7 @@ class Tool:
         # the absolute path of the project
         self.project_root = ""
         # skip them when recognize projects
-        self.WHITELIST = ["bin", "ksu-derviers", "__pycache__"]
+        self.WHITELIST = ["bin", "ksu-derviers", "__pycache__", "config"]
 
     def greet(self):
         print(f'\033[31m {getattr(banner, "banner%s" % settings.banner)} \033[0m')
@@ -443,7 +443,7 @@ class Tool:
         # change the working directory
         os.chdir(self.project_root)
 
-        print(" \n\033[31m>项目菜单 \033[0m\n")
+        print(utils.red("> 项目菜单"))
         (
             print(f"  项目：{self.project_name}\033[91m(不完整)\033[0m\n")
             if not os.path.exists(os.path.abspath("config"))
@@ -454,9 +454,9 @@ class Tool:
         os.makedirs(self.project_root + os.sep + "TI_out", exist_ok=True)
         os.makedirs(self.project_root + os.sep + "config", exist_ok=True)
 
-        print("\033[33m    1> 解包菜单     2> 打包菜单\033[0m\n")
-        print("\033[33m    3> 定制功能     4> 精简分区\033[0m\n\n")
-        print("\033[1;32m    00> 返回主页    88> 退出TIK\033[0m\n")
+        print(utils.yellow("    1> 解包菜单     2> 打包菜单"))
+        print(utils.blue("    3> 定制功能     4> 精简分区\n"))
+        print(utils.green("    00> 返回主页    88> 退出TIK"))
 
         op_menu = input("    请输入编号: ")
 
@@ -572,7 +572,7 @@ class Tool:
     def apatch_patch(self): ...
 
 
-def unpack_choo(project_dir:str):
+def unpack_choo(project_dir: str):
     """解包前端"""
     cls()
     os.chdir(project_dir)

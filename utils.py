@@ -25,6 +25,22 @@ binner = elocal + os.sep + "bin"
 ebinner = binner + os.sep + ostype + os.sep + platform + os.sep
 
 
+def yellow(text):
+    return f"\033[33m{text}\033[0m\n"
+
+
+def green(text):
+    return f"\033[32m{text}\033[0m\n"
+
+
+def red(text):
+    return f"\033[31m{text}\033[0m\n"
+
+
+def blue(text):
+    return f"\033[36m{text}\033[0m\n"
+
+
 class JsonEdit:
     def __init__(self, j_f):
         self.file = j_f
