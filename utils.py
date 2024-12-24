@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import json
 import os
 import platform as plat
@@ -8,6 +6,7 @@ from threading import Thread
 
 from rich.console import Console
 from rich.table import Table
+from rich.text import Text
 
 from api import cls
 from lpunpack import SparseImage
@@ -23,20 +22,44 @@ binner = elocal + os.sep + "bin"
 ebinner = binner + os.sep + ostype + os.sep + platform + os.sep
 
 
+class MyPrinter:
+    def __init__(self):
+        self.console = Console(highlighter=None)
+
+    def print_white(self, text: str):
+        self.console.print(text,style="white")
+
+    def print_yellow(self, text: str):
+        self.console.print(text, style="yellow")
+
+    def print_red(self, text: str):
+        self.console.print(text, style="red")
+
+    def print_green(self, text: str):
+        self.console.print(text, style="green")
+
+    def print_cyan(self, text: str):
+        self.console.print(text, style="cyan")
+
+    def print_blue(self, text: str):
+        self.console.print(text, style="blue")
+
+
 def yellow(text, needN=True):
-    return f"\033[33m{text}\033[0m\n" if needN else f"\033[33m{text}\033[0m"
+    return Text(text, style="yellow")
+    # return f"\033[33m{text}\033[0m" + ("\n" if needN else "")
 
 
 def green(text, needN=True):
-    return f"\033[32m{text}\033[0m\n" if needN else f"\033[32m{text}\033[0m"
+    return f"\033[32m{text}\033[0m" + ("\n" if needN else "")
 
 
 def red(text, needN=True):
-    return f"\033[31m{text}\033[0m\n" if needN else f"\033[31m{text}\033[0m"
+    return f"\033[31m{text}\033[0m" + ("\n" if needN else "")
 
 
 def blue(text, needN=True):
-    return f"\033[36m{text}\033[0m\n" if needN else f"\033[36m{text}\033[0m"
+    return f"\033[36m{text}\033[0m" + ("\n" if needN else "")
 
 
 class JsonEdit:

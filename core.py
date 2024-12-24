@@ -6,7 +6,6 @@ import subprocess
 import sys
 import time
 from argparse import Namespace
-from typing import Literal
 
 import extract_dtb
 import requests
@@ -15,14 +14,13 @@ from rich.progress import track
 
 import banner
 import contextpatch
-import ext4
 import fspatch
 import imgextractor
 import lpunpack
 import mkdtboimg
 import tikpath
 import utils
-from api import cat, cls, dir_has, dirsize
+from api import cls, dir_has, dirsize
 from log import *
 from utils import JsonEdit, SetUtils, gettype, simg2img, versize
 
@@ -58,10 +56,34 @@ def dis_avb(fstab: str):
         tf.write(details)
 
 
+def greet():
+    print(f"\033[31m {banner.banner1} \033[0m")
+    print("\033[93;44m Alpha Edition \033[0m")
+
+    if settings.online == "true":
+        try:
+            content = json.loads(
+                requests.get(
+                    "https://v1.jinrishici.com/all.json", timeout=2
+                ).content.decode()
+            )
+            shiju = content.get("content")
+            fr = content.get("origin")
+            another = content.get("author")
+        except (Exception, BaseException):
+            print(f"\033[36m “开源，是一场无问西东的前行”\033[0m\n")
+        else:
+            print(f"\033[36m “{shiju}”")
+            print(f"\033[36m---{another}《{fr}》\033[0m\n")
+    else:
+        print(f"\033[36m “开源，是一场无问西东的前行”")
+
+
 class Tool:
     """
     主程序的主循环
     """
+    printer = utils.MyPrinter()
 
     def __init__(self):
         self.local_dir = os.getcwd()
@@ -77,28 +99,6 @@ class Tool:
     def user_continue(self):
         input("任意按钮继续")
 
-    def greet(self):
-        print(f"\033[31m {banner.banner1} \033[0m")
-        print("\033[93;44m Alpha Edition \033[0m")
-
-        if settings.online == "true":
-            try:
-                content = json.loads(
-                    requests.get(
-                        "https://v1.jinrishici.com/all.json", timeout=2
-                    ).content.decode()
-                )
-                shiju = content.get("content")
-                fr = content.get("origin")
-                another = content.get("author")
-            except (Exception, BaseException):
-                print(f"\033[36m “开源，是一场无问西东的前行”\033[0m\n")
-            else:
-                print(f"\033[36m “{shiju}”")
-                print(f"\033[36m---{another}《{fr}》\033[0m\n")
-        else:
-            print(f"\033[36m “开源，是一场无问西东的前行”")
-
     def main(self):
         # key-value pairs of the projects(number: project_name)
         project_num = 0
@@ -106,12 +106,13 @@ class Tool:
 
         # clear the screen and show the banner
         cls()
-        self.greet()
-        print(f" >{utils.yellow(' 项目列表 ')}")
-        print(utils.red("   [00]  删除项目"))
-        print(utils.green("   [0]  新建项目"))
+        greet()
 
-        # list all of the projects
+        self.printer.print_white(" > 项目列表\n")
+        self.printer.print_red("   [00]  删除项目\n")
+        self.printer.print_green("   [0]  新建项目\n")
+
+        # list all the projects
         for project_dir in os.listdir(self.local_dir):
             # neglect the directories in the whitelist
             if project_dir in self.WHITELIST or project_dir.startswith("."):
@@ -186,6 +187,7 @@ class Tool:
 
     def project(self):
         cls()
+
         tikpath.set_project_path(self.project_name)
 
         print(utils.red("> 项目菜单"))
@@ -199,9 +201,9 @@ class Tool:
         os.makedirs(self.project_root + os.sep + "TI_out", exist_ok=True)
         os.makedirs(self.project_root + os.sep + "config", exist_ok=True)
 
-        print(utils.yellow("    1> 解包菜单     2> 打包菜单"))
-        print(utils.blue("    3> 定制功能     4> 精简分区\n"))
-        print(utils.green("    00> 返回主页    88> 退出TIK"))
+        self.printer.print_yellow("    1> 解包菜单     2> 打包菜单\n")
+        self.printer.print_blue("    3> 定制功能     4> 精简分区\n")
+        self.printer.print_green("    00> 返回主页    88> 退出TIK\n")
 
         op_menu = input("    请输入编号: ")
 
@@ -382,11 +384,11 @@ def unpack_choo():
 def pack_choo():
     """打包前端"""
     cls()
+
     project_dir = tikpath.PROJECT_PATH
     print(" \033[31m >打包 \033[0m\n")
     partn = 0
-    parts = {}
-    types = {}
+    parts, types = {}, {}
     json_ = JsonEdit(project_dir + os.sep + "config" + os.sep + "parts_info").read()
     if not os.path.exists(project_dir + os.sep + "config"):
         os.makedirs(project_dir + os.sep + "config")
@@ -459,7 +461,7 @@ def pack_choo():
                 elif types[f] == "dtbo":
                     makedtbo(parts[f], project_dir)
                 else:
-                    pack_img(project_dir, parts[f], imgtype, israw)
+                    pack_img(parts[f], imgtype, israw)
         elif filed == "66":
             packsuper(project_dir)
         elif filed == "00":
@@ -495,7 +497,7 @@ def pack_choo():
                 elif types[int(filed)] == "dtbo":
                     makedtbo(parts[int(filed)], project_dir)
                 else:
-                    pack_img(project_dir, parts[int(filed)], imgtype, israw)
+                    pack_img(parts[int(filed)], imgtype, israw)
             else:
                 wrap_red("Input error!")
         else:
@@ -742,40 +744,26 @@ def makedtbo(sf, project):
 
 
 def pack_img(
-    project_dir: str,
     img_name: str,
-    img_type: Literal["ext", "erofs", "f2fs"],
+    img_type: str,
     israw: bool,
 ):
-    print(f"project_dir:{project_dir}")
+    """
+    打包镜像的核心方法
+    """
+    project_dir = tikpath.PROJECT_PATH
+    # 根据镜像名称获取对应的配置文件
     file_contexts = tikpath.get_file_contexts(img_name)
     fs_config = tikpath.get_fs_config(img_name)
-
+    # 时间戳
     utc = int(time.time()) if not settings.utcstamp else settings.utcstamp
-
+    # 生成路径与待打包的内容
     out_img = tikpath.get_out_img_path(img_name)
-
     in_files = tikpath.get_input_for_image(img_name)
 
-    img_size0 = (
-        int(cat(project_dir + os.sep + "config" + os.sep + img_name + "_size.txt"))
-        if os.path.exists(
-            project_dir + os.sep + "config" + os.sep + img_name + "_size.txt"
-        )
-        else 0
-    )
-
-    img_size1 = dirsize(in_files, 1, 1).rsize_v
-    if settings.diysize == "" and img_size0 < img_size1:
-        wrap_red("您设置的size过小,将动态调整size!")
-        img_size0 = dirsize(
-            in_files, 1, 3, project_dir + os.sep + "dynamic_partitions_op_list"
-        ).rsize_v
-
-    elif settings.diysize == "":
-        img_size0 = dirsize(
-            in_files, 1, 3, project_dir + os.sep + "dynamic_partitions_op_list"
-        ).rsize_v
+    img_size0 = dirsize(
+        in_files, 1, 3, project_dir + os.sep + "dynamic_partitions_op_list"
+    ).rsize_v
 
     # patch file_contexts and fs_config
     fspatch.main(in_files, fs_config)
@@ -787,6 +775,7 @@ def pack_img(
 
     size = img_size0 / int(settings.BLOCKSIZE)
     size = int(size)
+
     if img_type == "erofs":
         os.system(
             rf"{tikpath.get_binary_path('mkfs.erofs')} \
@@ -798,8 +787,9 @@ def pack_img(
                 {out_img} \
                 {in_files}"
         )
+
     elif img_type == "f2fs":
-        size_f2fs = (54 * 1024 * 1024) + img_size1
+        size_f2fs = (54 * 1024 * 1024) + img_size0
         size_f2fs = int(size_f2fs * 1.15) + 1
         with open(out_img, "wb") as f:
             f.truncate(size_f2fs)
@@ -820,31 +810,29 @@ def pack_img(
                 {out_img} \
                 -c"
         )
+
     else:
-        if os.path.exists(file_contexts):
-            os.system(
-                rf"{tikpath.get_binary_path('mke2fs')} \
-                    -O ^has_journal \
-                    -L {img_name} \
-                    -I 256 \
-                    -M /{img_name} \
-                    -m 0 \
-                    -t ext4 \
-                    -b {settings.BLOCKSIZE} \
-                    {out_img} \
-                    {size}"
-            )
-            os.system(
-                rf"{tikpath.get_binary_path('e2fsdroid')} -e \
-                    -T {utc} \
-                    -S {file_contexts} \
-                    -C {fs_config} \
-                    -a /{img_name} \
-                    -f {in_files} \
-                    {out_img}"
-            )
-        else:
-            wrap_red("Miss file_contexts")
+        os.system(
+            rf"{tikpath.get_binary_path('mke2fs')} \
+                -O ^has_journal \
+                -L {img_name} \
+                -I 256 \
+                -M /{img_name} \
+                -m 0 \
+                -t ext4 \
+                -b {settings.BLOCKSIZE} \
+                {out_img} \
+                {size}"
+        )
+        os.system(
+            rf"{tikpath.get_binary_path('e2fsdroid')} -e \
+                -T {utc} \
+                -S {file_contexts} \
+                -C {fs_config} \
+                -a /{img_name} \
+                -f {in_files} \
+                {out_img}"
+        )
 
     if not israw:
         os.system(f"img2simg {out_img} {out_img}.s")
@@ -1016,15 +1004,6 @@ def unpack(file, info, project):
     elif info == "img":
         unpack(file, gettype(file), project)
     elif info == "ext":
-        with open(file, "rb+") as e:
-            mount = ext4.Volume(e).get_mount_point
-            if mount[:1] == "/":
-                mount = mount[1:]
-            if "/" in mount:
-                mount = mount.split("/")
-                mount = mount[len(mount) - 1]
-            if mount and os.path.basename(file).split(".")[0] != "mi_ext":
-                parts[mount] = "ext"
         with Console().status(f"[yellow]正在提取{os.path.basename(file)}[/]"):
             imgextractor.Extractor().main(
                 file, project + os.sep + os.path.basename(file).split(".")[0], project
@@ -1064,4 +1043,3 @@ def unpack(file, info, project):
         unpackboot(os.path.abspath(file), project)
     else:
         wrap_red("未知格式！")
-    json_.write(parts)
