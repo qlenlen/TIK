@@ -2,13 +2,11 @@ import json
 import os
 import platform as plat
 import sys
-from threading import Thread
+from dataclasses import dataclass
 
 from rich.console import Console
-from rich.table import Table
 from rich.text import Text
 
-from api import cls
 from lpunpack import SparseImage
 
 try:
@@ -27,7 +25,7 @@ class MyPrinter:
         self.console = Console(highlighter=None)
 
     def print_white(self, text: str):
-        self.console.print(text,style="white")
+        self.console.print(text, style="white")
 
     def print_yellow(self, text: str):
         self.console.print(text, style="yellow")
@@ -91,63 +89,35 @@ def versize(size):
     return int(closest_half_gb * 1024 * 1024 * 1024)
 
 
+@dataclass
 class SetUtils:
-    def __init__(self, path):
-        self.path = path
-        self.supername = "super"
-        self.brcom = "1"
-        self.banner = "1"
-        self.pack_e2 = "1"
-        self.pack_sparse = "0"
-        self.autoslotsuffixing = ""
-        self.fullsuper = "-F"
-        self.BLOCKSIZE = "4096"
-        self.SBLOCKSIZE = "4096"
-        self.metadatasize = "65536"
-        self.super_group = "qti_dynamic_partitions"
-        self.erofslim = "lz4hc,8"
-        self.utcstamp = "1722470400"
-        self.diysize = ""
-        self.diyimgtype = "1"
-        self.online = "true"
-        self.erofs_old_kernel = "0"
-        self.context = "false"
-        self.version = "5.121"
+    supername = "super"
+    brcom = "1"
+    banner = "1"
+    pack_e2 = "1"
+    pack_sparse = "0"
+    autoslotsuffixing = ""
+    fullsuper = "-F"
+    BLOCKSIZE = "4096"
+    SBLOCKSIZE = "4096"
+    metadatasize = "65536"
+    super_group = "qti_dynamic_partitions"
+    erofslim = "lz4hc,8"
+    utcstamp = "1722470400"
+    diysize = ""
+    diyimgtype = "1"
+    online = "true"
+    erofs_old_kernel = "0"
+    context = "false"
+    version = "5.121"
 
     def load_set(self):
         with open(self.path, "r") as ss:
             data = json.load(ss)
             [setattr(self, v, data[v]) for v in data]
 
-    def change(self, name, value):
-        with open(self.path, "r") as ss:
-            data = json.load(ss)
-        with open(self.path, "w", encoding="utf-8") as ss:
-            data[name] = value
-            json.dump(data, ss, ensure_ascii=False, indent=4)
-        self.load_set()
 
-
-def error(exception_type, exception, traceback):
-    cls()
-    table = Table()
-    table.add_column(f"[red]ERROR:{exception_type.__name__}[/]", justify="center")
-    table.add_row(f"[yellow]Describe:{exception}")
-    table.add_row(
-        f'[yellow]Lines:{exception.__traceback__.tb_lineno}\tModule:{exception.__traceback__.tb_frame.f_globals["__name__"]}'
-    )
-    table.add_section()
-    table.add_row(
-        f"[blue]Platform:[purple]{plat.machine()}\t[blue]System:[purple]{plat.uname().system} {plat.uname().release}"
-    )
-    table.add_section()
-    table.add_row(f"[green]Report:https://github.com/ColdWindScholar/TIK/issues")
-    Console().print(table)
-    input()
-    sys.exit(1)
-
-
-formats = (
+formats: [bytes, str, int] = (
     [b"PK", "zip"],
     [b"OPPOENCRYPT!", "ozip"],
     [b"7z", "7z"],
@@ -182,112 +152,33 @@ formats = (
 
 
 def gettype(file) -> str:
-    if not os.path.exists(file):
-        return "fne"
-
     def compare(header: bytes, number: int = 0) -> int:
         with open(file, "rb") as f:
             f.seek(number)
             return f.read(len(header)) == header
 
-    def is_super(fil) -> bytes | bool:
-        with open(fil, "rb") as file_:
-            buf = bytearray(file_.read(4))
-            if len(buf) < 4:
-                return False
-            file_.seek(0, 0)
-
-            while buf[0] == 0x00:
-                buf = bytearray(file_.read(1))
+    def is_super(fil) -> bool:
+        with open(fil, "rb") as f:
             try:
-                file_.seek(-1, 1)
-            except:
+                f.seek(4096, 0)
+            except Exception as e:
+                print(e)
                 return False
-            buf += bytearray(file_.read(4))
-        return buf[1:] == b"\x67\x44\x6c\x61"
-
-    def is_super2(fil) -> bytes | bool:
-        with open(fil, "rb") as file_:
-            try:
-                file_.seek(4096, 0)
-            except:
-                return False
-            buf = bytearray(file_.read(4))
+            buf = bytearray(f.read(4))
         return buf == b"\x67\x44\x6c\x61"
 
-    try:
-        if is_super(file) or is_super2(file):
-            return "super"
-    except IndexError:
-        pass
-    for f_ in formats:
-        if len(f_) == 2:
-            if compare(f_[0]):
-                return f_[1]
-        elif len(f_) == 3:
-            if compare(f_[0], f_[2]):
-                return f_[1]
-    return "unknow"
+    if is_super(file):
+        return "super"
 
-
-def dynamic_list_reader(path):
-    data = {}
-    with open(path, "r", encoding="utf-8") as l_f:
-        for p in l_f.readlines():
-            if p[:1] == "#":
-                continue
-            tmp = p.strip().split()
-            if tmp[0] == "remove_all_groups":
-                data.clear()
-            elif tmp[0] == "add_group":
-                data[tmp[1]] = {}
-                data[tmp[1]]["size"] = tmp[2]
-                data[tmp[1]]["parts"] = []
-            elif tmp[0] == "add":
-                data[tmp[2]]["parts"].append(tmp[1])
-            else:
-                print(f"Skip {tmp}")
-    return data
-
-
-def generate_dynamic_list(dbfz, size, set_, lb, work):
-    data = [
-        "# Remove all existing dynamic partitions and groups before applying full OTA",
-        "remove_all_groups",
-    ]
-    with open(
-        work + "dynamic_partitions_op_list", "w", encoding="utf-8", newline="\n"
-    ) as d_list:
-        if set_ == 1:
-            data.append(f"# Add group {dbfz} with maximum size {size}")
-            data.append(f"add_group {dbfz} {size}")
-        elif set_ in [2, 3]:
-            data.append(f"# Add group {dbfz}_a with maximum size {size}")
-            data.append(f"add_group {dbfz}_a {size}")
-            data.append(f"# Add group {dbfz}_b with maximum size {size}")
-            data.append(f"add_group {dbfz}_b {size}")
-        for part in lb:
-            if set_ == 1:
-                data.append(f"# Add partition {part} to group {dbfz}")
-                data.append(f"add {part} {dbfz}")
-            elif set_ in [2, 3]:
-                data.append(f"# Add partition {part}_a to group {dbfz}_a")
-                data.append(f"add {part}_a {dbfz}_a")
-                data.append(f"# Add partition {part}_b to group {dbfz}_b")
-                data.append(f"add {part}_b {dbfz}_b")
-        for part in lb:
-            if set_ == 1:
-                data.append(
-                    f'# Grow partition {part} from 0 to {os.path.getsize(work + part + ".img")}'
-                )
-                data.append(f'resize {part} {os.path.getsize(work + part + ".img")}')
-            elif set_ in [2, 3]:
-                data.append(
-                    f'# Grow partition {part}_a from 0 to {os.path.getsize(work + part + ".img")}'
-                )
-                data.append(f'resize {part}_a {os.path.getsize(work + part + ".img")}')
-        d_list.writelines([key + "\n" for key in data])
-        data.clear()
+    for _f in formats:
+        match len(_f):
+            case 2:
+                if compare(_f[0]):
+                    return _f[1]
+            case 3:
+                if compare(_f[0], int(_f[2])):
+                    return _f[1]
+    return "Unknown"
 
 
 def qc(file_) -> None:
@@ -305,10 +196,6 @@ def qc(file_) -> None:
     del data, new_data
 
 
-def cz(func, *args):
-    Thread(target=func, args=args, daemon=True).start()
-
-
 def simg2img(path):
     with open(path, "rb") as fd:
         if SparseImage(fd).check():
@@ -324,58 +211,3 @@ def simg2img(path):
             os.rename(unsparse_file, path)
     except Exception as e:
         print(e)
-
-
-# ----CLASSES
-
-
-class vbpatch:
-    def __init__(self, file_):
-        self.file = file_
-
-    def checkmagic(self):
-        if os.access(self.file, os.F_OK):
-            magic = b"AVB0"
-            with open(self.file, "rb") as f:
-                buf = f.read(4)
-                return magic == buf
-        else:
-            print("File dose not exist!")
-
-    def readflag(self):
-        if not self.checkmagic():
-            return False
-        if os.access(self.file, os.F_OK):
-            with open(self.file, "rb") as f:
-                f.seek(123, 0)
-                flag = f.read(1)
-                if flag == b"\x00":
-                    return 0  # Verify boot and dm-verity is on
-                elif flag == b"\x01":
-                    return 1  # Verify boot but dm-verity is off
-                elif flag == b"\x02":
-                    return 2  # All verity is off
-                else:
-                    return flag
-        else:
-            print("File does not exist!")
-
-    def patchvb(self, flag):
-        if not self.checkmagic():
-            return False
-        if os.access(self.file, os.F_OK):
-            with open(self.file, "rb+") as f:
-                f.seek(123, 0)
-                f.write(flag)
-            print("Done!")
-        else:
-            print("File not Found")
-
-    def restore(self):
-        self.patchvb(b"\x00")
-
-    def disdm(self):
-        self.patchvb(b"\x01")
-
-    def disavb(self):
-        self.patchvb(b"\x02")

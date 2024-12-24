@@ -22,12 +22,7 @@ import tikpath
 import utils
 from api import cls, dir_has, dirsize
 from log import *
-from utils import JsonEdit, SetUtils, gettype, simg2img, versize
-
-LOCALDIR = os.getcwd()
-SETTINGS_PATH = os.path.join(LOCALDIR, "config", "settings.json")
-settings = SetUtils(SETTINGS_PATH)
-settings.load_set()
+from utils import JsonEdit, gettype, simg2img, versize, SetUtils
 
 
 def write_project_path(project_path: str):
@@ -60,23 +55,20 @@ def greet():
     print(f"\033[31m {banner.banner1} \033[0m")
     print("\033[93;44m Alpha Edition \033[0m")
 
-    if settings.online == "true":
-        try:
-            content = json.loads(
-                requests.get(
-                    "https://v1.jinrishici.com/all.json", timeout=2
-                ).content.decode()
-            )
-            shiju = content.get("content")
-            fr = content.get("origin")
-            another = content.get("author")
-        except (Exception, BaseException):
-            print(f"\033[36m “开源，是一场无问西东的前行”\033[0m\n")
-        else:
-            print(f"\033[36m “{shiju}”")
-            print(f"\033[36m---{another}《{fr}》\033[0m\n")
+    try:
+        content = json.loads(
+            requests.get(
+                "https://v1.jinrishici.com/all.json", timeout=2
+            ).content.decode()
+        )
+        shiju = content.get("content")
+        fr = content.get("origin")
+        another = content.get("author")
+    except (Exception, BaseException):
+        print(f"\033[36m “开源，是一场无问西东的前行”\033[0m\n")
     else:
-        print(f"\033[36m “开源，是一场无问西东的前行”")
+        print(f"\033[36m “{shiju}”")
+        print(f"\033[36m---{another}《{fr}》\033[0m\n")
 
 
 class Tool:
@@ -134,7 +126,7 @@ class Tool:
                 delete_index := input("  请输入你要删除的项目序号:").strip()
             ) in projects.keys():
                 if input(f"  确认删除{projects[delete_index]}？[1/0]") == "1":
-                    shutil.rmtree(os.path.join(LOCALDIR, projects[delete_index]))
+                    shutil.rmtree(os.path.join(tikpath.TIK_PATH, projects[delete_index]))
                 else:
                     print_red("取消删除")
             else:
@@ -256,7 +248,7 @@ class Tool:
         elif op_menu == "3":
             self.apatch_patch()
         elif op_menu == "4":
-            for root, dirs, files in os.walk(LOCALDIR + os.sep + self.project_name):
+            for root, dirs, files in os.walk(tikpath.TIK_PATH + os.sep + self.project_name):
                 for file in files:
                     if file.startswith("fstab."):
                         dis_avb(os.path.join(root, file))
@@ -552,7 +544,6 @@ def dboot(infile, orig):
     else:
         os.remove(orig)
         os.rename(infile + os.sep + "new-boot.img", orig)
-        os.chdir(LOCALDIR)
         try:
             shutil.rmtree(infile)
         except (Exception, BaseException):
@@ -567,7 +558,6 @@ def unpackboot(file, project):
     os.chdir(project + os.sep + name)
     if os.system("magiskboot unpack -h %s" % file) != 0:
         print("Unpack %s Fail..." % file)
-        os.chdir(LOCALDIR)
         shutil.rmtree(project + os.sep + name)
         return
     if os.access(project + os.sep + name + os.sep + "ramdisk.cpio", os.F_OK):
@@ -597,10 +587,8 @@ def unpackboot(file, project):
         os.chdir(project + os.sep + name + os.sep)
         print("Unpacking Ramdisk...")
         os.system("cpio -i -d -F ramdisk.cpio -D ramdisk")
-        os.chdir(LOCALDIR)
     else:
         print("Unpack Done!")
-    os.chdir(LOCALDIR)
 
 
 def undtb(project, infile):
@@ -756,7 +744,7 @@ def pack_img(
     file_contexts = tikpath.get_file_contexts(img_name)
     fs_config = tikpath.get_fs_config(img_name)
     # 时间戳
-    utc = int(time.time()) if not settings.utcstamp else settings.utcstamp
+    utc = int(time.time())
     # 生成路径与待打包的内容
     out_img = tikpath.get_out_img_path(img_name)
     in_files = tikpath.get_input_for_image(img_name)
@@ -773,13 +761,13 @@ def pack_img(
         contextpatch.main(in_files, file_contexts)
         utils.qc(file_contexts)
 
-    size = img_size0 / int(settings.BLOCKSIZE)
+    size = img_size0 / int(SetUtils.BLOCKSIZE)
     size = int(size)
 
     if img_type == "erofs":
         os.system(
             rf"{tikpath.get_binary_path('mkfs.erofs')} \
-                -z{settings.erofslim} \
+                -z{SetUtils.erofslim} \
                 -T {utc} \
                 --mount-point=/{img_name} \
                 --fs-config-file={fs_config} \
@@ -820,7 +808,7 @@ def pack_img(
                 -M /{img_name} \
                 -m 0 \
                 -t ext4 \
-                -b {settings.BLOCKSIZE} \
+                -b {SetUtils.BLOCKSIZE} \
                 {out_img} \
                 {size}"
         )
@@ -920,13 +908,13 @@ def insuper(imgdir, outputimg, ssize, stype, sparsev, isreadonly):
             if os.path.isfile(file_path) and os.path.getsize(file_path) == 0:
                 os.remove(file_path)
     superpa = (
-        f"--metadata-size {settings.metadatasize} --super-name {settings.supername} "
+        f"--metadata-size {SetUtils.metadatasize} --super-name {SetUtils.supername} "
     )
     if sparsev == "1":
         superpa += "--sparse "
     if stype == "VAB":
         superpa += "--virtual-ab "
-    superpa += f"-block-size={settings.SBLOCKSIZE} "
+    superpa += f"-block-size={SetUtils.SBLOCKSIZE} "
     for imag in os.listdir(imgdir):
         if imag.endswith(".img"):
             image = imag.replace("_a.img", "").replace("_b.img", "").replace(".img", "")
@@ -942,7 +930,7 @@ def insuper(imgdir, outputimg, ssize, stype, sparsev, isreadonly):
                         img_sizeb = os.path.getsize(imgdir + os.sep + image + "_b.img")
                         group_size_a += img_sizea
                         group_size_b += img_sizeb
-                        superpa += f"--partition {image}_a:{attr}:{img_sizea}:{settings.super_group}_a --image {image}_a={imgdir}{os.sep}{image}_a.img --partition {image}_b:{attr}:{img_sizeb}:{settings.super_group}_b --image {image}_b={imgdir}{os.sep}{image}_b.img "
+                        superpa += f"--partition {image}_a:{attr}:{img_sizea}:{SetUtils.super_group}_a --image {image}_a={imgdir}{os.sep}{image}_a.img --partition {image}_b:{attr}:{img_sizeb}:{SetUtils.super_group}_b --image {image}_b={imgdir}{os.sep}{image}_b.img "
                     else:
                         if not os.path.exists(
                             imgdir + os.sep + image + ".img"
@@ -955,7 +943,7 @@ def insuper(imgdir, outputimg, ssize, stype, sparsev, isreadonly):
                         img_size = os.path.getsize(imgdir + os.sep + image + ".img")
                         group_size_a += img_size
                         group_size_b += img_size
-                        superpa += f"--partition {image}_a:{attr}:{img_size}:{settings.super_group}_a --image {image}_a={imgdir}{os.sep}{image}.img --partition {image}_b:{attr}:0:{settings.super_group}_b "
+                        superpa += f"--partition {image}_a:{attr}:{img_size}:{SetUtils.super_group}_a --image {image}_a={imgdir}{os.sep}{image}.img --partition {image}_b:{attr}:0:{SetUtils.super_group}_b "
                 else:
                     if not os.path.exists(
                         imgdir + os.sep + image + ".img"
@@ -966,7 +954,7 @@ def insuper(imgdir, outputimg, ssize, stype, sparsev, isreadonly):
                         )
 
                     img_size = os.path.getsize(imgdir + os.sep + image + ".img")
-                    superpa += f"--partition {image}:{attr}:{img_size}:{settings.super_group} --image {image}={imgdir}{os.sep}{image}.img "
+                    superpa += f"--partition {image}:{attr}:{img_size}:{SetUtils.super_group} --image {image}={imgdir}{os.sep}{image}.img "
                     group_size_a += img_size
                 print(f"已添加分区:{image}")
     supersize = ssize
@@ -975,12 +963,12 @@ def insuper(imgdir, outputimg, ssize, stype, sparsev, isreadonly):
     superpa += f"--device super:{supersize} "
     if stype in ["VAB", "AB"]:
         superpa += "--metadata-slots 3 "
-        superpa += f" --group {settings.super_group}_a:{supersize} "
-        superpa += f" --group {settings.super_group}_b:{supersize} "
+        superpa += f" --group {SetUtils.super_group}_a:{supersize} "
+        superpa += f" --group {SetUtils.super_group}_b:{supersize} "
     else:
         superpa += "--metadata-slots 2 "
-        superpa += f" --group {settings.super_group}:{supersize} "
-    superpa += f"{settings.fullsuper} {settings.autoslotsuffixing} --output {outputimg}"
+        superpa += f" --group {SetUtils.super_group}:{supersize} "
+    superpa += f"{SetUtils.fullsuper} {SetUtils.autoslotsuffixing} --output {outputimg}"
     (
         wrap_red("创建super.img失败！")
         if os.system(f"lpmake {superpa}") != 0
