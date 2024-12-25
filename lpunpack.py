@@ -621,6 +621,7 @@ class SparseImage:
         self.header = None
 
     def check(self):
+        """Check if it is a sparse image"""
         self._fd.seek(0)
         self.header = SparseHeader(self._fd.read(SPARSE_HEADER_SIZE))
         return False if self.header.magic != SPARSE_HEADER_MAGIC else True

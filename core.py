@@ -9,18 +9,17 @@ from argparse import Namespace
 
 import extract_dtb
 import requests
-from rich.console import Console
 from rich.progress import track
 
 import banner
 import contextpatch
 import fspatch
-import imgextractor
 import lpunpack
 import mkdtboimg
 import tikpath
 import utils
 from api import cls, dir_has, dirsize
+from image import ImageConverter, ImageUnpacker
 from log import *
 from utils import JsonEdit, gettype, simg2img, versize, SetUtils
 
@@ -316,7 +315,7 @@ def unpack_choo():
     """解包前端"""
     cls()
     project_dir = tikpath.PROJECT_PATH
-    os.chdir(project_dir)
+
     print(" \033[31m >分解 \033[0m\n")
     filen = 0
     files = {}
@@ -755,11 +754,11 @@ def pack_img(
 
     # patch file_contexts and fs_config
     fspatch.main(in_files, fs_config)
-    utils.qc(fs_config)
+    utils.remove_duplicate_lines(fs_config)
 
     if os.path.exists(file_contexts):
         contextpatch.main(in_files, file_contexts)
-        utils.qc(file_contexts)
+        utils.remove_duplicate_lines(file_contexts)
 
     size = img_size0 / int(SetUtils.BLOCKSIZE)
     size = int(size)
@@ -823,9 +822,7 @@ def pack_img(
         )
 
     if not israw:
-        os.system(f"img2simg {out_img} {out_img}.s")
-        os.remove(out_img)
-        os.rename(out_img + ".s", out_img)
+        ImageConverter(out_img).img2simg()
 
 
 def packsuper(project):
@@ -992,22 +989,11 @@ def unpack(file, info, project):
     elif info == "img":
         unpack(file, gettype(file), project)
     elif info == "ext":
-        with Console().status(f"[yellow]正在提取{os.path.basename(file)}[/]"):
-            imgextractor.Extractor().main(
-                file, project + os.sep + os.path.basename(file).split(".")[0], project
-            )
-        try:
-            os.remove(file)
-        except (Exception, BaseException):
-            ...
+        ImageUnpacker(file).unpack_ext()
     elif info == "erofs":
-        os.system(
-            f"{tikpath.get_binary_path('extract.erofs')} -i {os.path.abspath(file)} -o {project} -x"
-        )
+        ImageUnpacker(file).unpack_erofs()
     elif info == "f2fs" and os.name == "posix":
-        os.system(
-            f"{tikpath.get_binary_path('extract.f2fs')} -o {project} {os.path.abspath(file)}"
-        )
+        ImageUnpacker(file).unpack_f2fs()
     elif info == "super":
         lpunpack.unpack(os.path.abspath(file), project)
         for v in os.listdir(project):
