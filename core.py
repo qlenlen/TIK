@@ -1,53 +1,23 @@
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
 import time
-from argparse import Namespace
 
-import extract_dtb
 import requests
 from rich.progress import track
 
 import banner
 import contextpatch
 import fspatch
-import lpunpack
 import mkdtboimg
 import tikpath
 import utils
 from api import cls, dir_has, dirsize
 from image import ImageConverter, ImageUnpacker
 from log import *
-from utils import JsonEdit, gettype, simg2img, versize, SetUtils
-
-
-def write_project_path(project_path: str):
-    with open("config/project_path", "w") as f:
-        f.write(project_path)
-
-
-def get_project_path() -> str:
-    """
-    获取当前项目路径
-    :return: 项目路径
-    """
-    return os.getcwd()
-
-
-def dis_avb(fstab: str):
-    print(f"正在处理: {fstab}")
-    if not os.path.exists(fstab):
-        return
-    with open(fstab, "r") as sf:
-        details = sf.read()
-    details = re.sub("avb=vbmeta_system,", "", details)
-    details = re.sub("avb,", "", details)
-    details = re.sub(",avb_keys=.*avbpubkey", "", details)
-    with open(fstab, "w") as tf:
-        tf.write(details)
+from utils import JsonEdit, simg2img, versize, SetUtils, TypeDetector
 
 
 def greet():
@@ -74,6 +44,7 @@ class Tool:
     """
     主程序的主循环
     """
+
     printer = utils.MyPrinter()
 
     def __init__(self):
@@ -125,7 +96,9 @@ class Tool:
                 delete_index := input("  请输入你要删除的项目序号:").strip()
             ) in projects.keys():
                 if input(f"  确认删除{projects[delete_index]}？[1/0]") == "1":
-                    shutil.rmtree(os.path.join(tikpath.TIK_PATH, projects[delete_index]))
+                    shutil.rmtree(
+                        os.path.join(tikpath.TIK_PATH, projects[delete_index])
+                    )
                 else:
                     print_red("取消删除")
             else:
@@ -173,8 +146,7 @@ class Tool:
         self.main()
 
     @staticmethod
-    def dis_data_encryption(fstab):
-        ...
+    def dis_data_encryption(fstab): ...
 
     def project(self):
         cls()
@@ -242,15 +214,6 @@ class Tool:
             return
         elif op_menu == "1":
             pass
-        elif op_menu == "2":
-            self.ksu_patch()
-        elif op_menu == "3":
-            self.apatch_patch()
-        elif op_menu == "4":
-            for root, dirs, files in os.walk(tikpath.TIK_PATH + os.sep + self.project_name):
-                for file in files:
-                    if file.startswith("fstab."):
-                        dis_avb(os.path.join(root, file))
         elif op_menu == "5":
             wrap_red("暂未支持")
             ...
@@ -258,57 +221,6 @@ class Tool:
             wrap_red("   Input error!")
         self.user_continue()
         self.custom_rom()
-
-    def ksu_patch(self):
-        cls()
-        cs = 0
-        project = self.local_dir + os.sep + self.project_name
-        os.chdir(self.local_dir)
-        print(" \n\033[31m>ksu修补 \033[0m\n")
-        print(f"  项目：{self.project_name}\n")
-        print(f"  请将要修补的镜像放入{project}")
-
-        boots = {}
-        for i in os.listdir(project):
-            if os.path.isdir(os.path.join(project, i)):
-                continue
-            if gettype(os.path.join(project, i)) in ["boot", "init_boot"]:
-                cs += 1
-                boots[str(cs)] = os.path.join(project, i)
-                print(f"  [{cs}]--{i}")
-        print("\033[33m-------------------------------\033[0m")
-        print("\033[33m    [00] 返回\033[0m\n")
-        op_menu = input("    请输入需要修补的boot的序号: ")
-
-        if op_menu in boots.keys():
-            kmi = {"1": "android13-5.15", "2": "android14-5.15", "3": "android14-6.1"}
-            print("\033[33m-------------------------------\033[0m")
-            print("\033[33m    [00] 取消修补\033[0m\n")
-            for i in kmi.keys():
-                print(f"    {i}: {kmi[i]}\n")
-            kmi_choice = input("\033[33m请选择内核镜像需要的kmi: \033[0m")
-
-            if kmi_choice == "00":
-                return
-
-            os.system(
-                rf"{tikpath.get_binary_path('ksud')} boot-patch \
-                    -b {boots[op_menu]} \
-                    --magiskboot {tikpath.get_binary_path('magiskboot')} \
-                    --kmi={kmi.get(kmi_choice)} \
-                    --out {project}"
-            )
-
-        elif op_menu == "00":
-            os.chdir(project)
-            return
-        else:
-            wrap_red("Input Error!")
-        self.user_continue()
-        self.project()
-
-    def apatch_patch(self):
-        ...
 
 
 def unpack_choo():
@@ -329,7 +241,7 @@ def unpack_choo():
             if img0.endswith(".img"):
                 if os.path.isfile(os.path.abspath(img0)):
                     filen += 1
-                    info = gettype(os.path.abspath(img0))
+                    info = TypeDetector(os.path.abspath(img0)).get_type()
                     (
                         wrap_red(f"   [{filen}]- {img0} <UNKNOWN>\n")
                         if info == "unknow"
@@ -560,7 +472,7 @@ def unpackboot(file, project):
         shutil.rmtree(project + os.sep + name)
         return
     if os.access(project + os.sep + name + os.sep + "ramdisk.cpio", os.F_OK):
-        comp = gettype(project + os.sep + name + os.sep + "ramdisk.cpio")
+        comp = TypeDetector.get_type(project + os.sep + name + os.sep + "ramdisk.cpio")
         print(f"Ramdisk is {comp}")
         with open(project + os.sep + name + os.sep + "comp", "w") as f:
             f.write(comp)
@@ -590,34 +502,6 @@ def unpackboot(file, project):
         print("Unpack Done!")
 
 
-def undtb(project, infile):
-    dtbdir = project + os.sep + os.path.basename(infile).split(".")[0]
-    shutil.rmtree(dtbdir)
-    if not os.path.exists(dtbdir):
-        os.makedirs(dtbdir)
-    extract_dtb.extract_dtb.split(
-        Namespace(filename=infile, output_dir=dtbdir + os.sep + "dtb_files", extract=1)
-    )
-    print_yellow("正在反编译dtb...")
-    for i in track(os.listdir(dtbdir + os.sep + "dtb_files")):
-        if i.endswith(".dtb"):
-            name = i.split(".")[0]
-            dtb = os.path.join(dtbdir, "dtb_files", name + ".dtb")
-            dts = os.path.join(dtbdir, "dtb_files", name + ".dts")
-            os.system(f"dtc -@ -I dtb -O dts {dtb} -o {dts}")
-    open(
-        project
-        + os.sep
-        + os.sep
-        + "config"
-        + os.sep
-        + "dtbinfo_"
-        + os.path.basename(infile).split(".")[0],
-        "w",
-    ).close()
-    print_green("反编译完成!")
-
-
 def makedtb(sf, project):
     dtbdir = project + os.sep + sf
     shutil.rmtree(dtbdir + os.sep + "new_dtb_files")
@@ -639,54 +523,6 @@ def makedtb(sf, project):
                 with open(os.path.abspath(dtb), "rb") as f:
                     sff.write(f.read())
     print_green("回编译完成！")
-
-
-def undtbo(project, infile):
-    dtbodir = project + os.sep + os.path.basename(infile).split(".")[0]
-    open(
-        project
-        + os.sep
-        + "config"
-        + os.sep
-        + "dtboinfo_"
-        + os.path.basename(infile).split(".")[0],
-        "w",
-    ).close()
-    shutil.rmtree(dtbodir)
-    if not os.path.exists(dtbodir + os.sep + "dtbo_files"):
-        os.makedirs(dtbodir + os.sep + "dtbo_files")
-        try:
-            os.makedirs(dtbodir + os.sep + "dts_files")
-        except (Exception, BaseException):
-            ...
-    print_yellow("正在解压dtbo.img")
-    mkdtboimg.dump_dtbo(infile, dtbodir + os.sep + "dtbo_files" + os.sep + "dtbo")
-    for dtbo_files in os.listdir(dtbodir + os.sep + "dtbo_files"):
-        if dtbo_files.startswith("dtbo."):
-            dts_files = dtbo_files.replace("dtbo", "dts")
-            print_yellow(f"正在反编译{dtbo_files}为{dts_files}")
-            dtbofiles = dtbodir + os.sep + "dtbo_files" + os.sep + dtbo_files
-            command = [
-                tikpath.get_binary_path("dtc"),
-                "-@",
-                "-I dtb",
-                "-O dts",
-                dtbofiles,
-                f"-o {os.path.join(dtbodir, 'dts_files', dts_files)}",
-            ]
-            if (
-                subprocess.call(
-                    " ".join(command),
-                    shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                != 0
-            ):
-                wrap_red(f"反编译{dtbo_files}失败！")
-                return
-    print_green("完成！")
-    shutil.rmtree(dtbodir + os.sep + "dtbo_files")
 
 
 def makedtbo(sf, project):
@@ -846,7 +682,9 @@ def packsuper(project):
         move_list = []
         for i in os.listdir(project + os.sep + "TI_out"):
             if os.path.isfile(os.path.join(project + os.sep + "TI_out", i)):
-                if gettype(os.path.join(project + os.sep + "TI_out", i)) in [
+                if TypeDetector(
+                    os.path.join(project + os.sep + "TI_out", i)
+                ).get_type() in [
                     "ext",
                     "erofs",
                 ]:
@@ -981,13 +819,13 @@ def unpack(file, info, project):
 
     if info == "sparse":
         simg2img(os.path.join(project, file))
-        unpack(file, gettype(file), project)
+        ImageUnpacker(file).unpack()
     elif info == "dtbo":
-        undtbo(project, os.path.abspath(file))
+        ImageUnpacker(file).unpack_dtbo()
     elif info == "dtb":
-        undtb(project, os.path.abspath(file))
+        ImageUnpacker(file).unpack_dtb()
     elif info == "img":
-        unpack(file, gettype(file), project)
+        ImageUnpacker(file).unpack()
     elif info == "ext":
         ImageUnpacker(file).unpack_ext()
     elif info == "erofs":
@@ -995,24 +833,7 @@ def unpack(file, info, project):
     elif info == "f2fs" and os.name == "posix":
         ImageUnpacker(file).unpack_f2fs()
     elif info == "super":
-        lpunpack.unpack(os.path.abspath(file), project)
-        for v in os.listdir(project):
-            if os.path.isfile(project + os.sep + v):
-                if os.path.getsize(project + os.sep + v) == 0:
-                    os.remove(project + os.sep + v)
-                else:
-                    if os.path.exists(
-                        project + os.sep + v.replace("_a", "")
-                    ) or os.path.exists(project + os.sep + v.replace("_b", "")):
-                        continue
-                    if v.endswith("_a.img"):
-                        shutil.move(
-                            project + os.sep + v, project + os.sep + v.replace("_a", "")
-                        )
-                    elif v.endswith("_b.img"):
-                        shutil.move(
-                            project + os.sep + v, project + os.sep + v.replace("_b", "")
-                        )
+        ImageUnpacker(file).unpack_super()
     elif info in ["boot", "vendor_boot"]:
         unpackboot(os.path.abspath(file), project)
     else:

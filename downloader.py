@@ -10,9 +10,15 @@ from threading import Event
 from typing import Iterable
 from urllib.request import urlopen
 
-from rich.progress import (BarColumn, DownloadColumn, Progress, TaskID,
-                           TextColumn, TimeRemainingColumn,
-                           TransferSpeedColumn)
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    TaskID,
+    TextColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 
 progress = Progress(
     TextColumn("[bold blue]{task.fields[filename]}", justify="right"),

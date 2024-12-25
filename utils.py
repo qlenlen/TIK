@@ -128,6 +128,7 @@ class TypeDetector:
     """
     文件类型获取
     """
+
     path: str = ""
 
     formats: tuple[TypeFlag] = (

@@ -371,8 +371,8 @@ class Dtbo:
         params = {"version": self.version, "dt_file": None}
         for _ in range(0, self.dt_entry_count):
             dt_table_entry = self.__metadata[
-                             offset: offset + self._DT_ENTRY_HEADER_INTS
-                             ]
+                offset : offset + self._DT_ENTRY_HEADER_INTS
+            ]
             params["dt_size"] = dt_table_entry[0]
             params["dt_offset"] = dt_table_entry[1]
             for j in range(2, self._DT_ENTRY_HEADER_INTS):
