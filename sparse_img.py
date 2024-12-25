@@ -18,7 +18,7 @@ import struct
 import sys
 from hashlib import sha1
 
-import rangelib
+from lib import rangelib
 
 
 class SparseImage(object):

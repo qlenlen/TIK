@@ -8,7 +8,7 @@ import json5
 from rich.console import Console
 from rich.text import Text
 
-from lpunpack import SparseImage
+from lib.lpunpack import SparseImage
 
 try:
     sys.set_int_max_str_digits(0)

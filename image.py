@@ -10,13 +10,11 @@ from rich.progress import track
 
 import contextpatch
 import fspatch
-import imgextractor
-import lpunpack
-import mkdtboimg
+from lib import lpunpack, mkdtboimg, imgextractor
 import tikpath
 import utils
-from lpunpack import SparseImage
-from utils import MyPrinter, TypeDetector, SetUtils
+from lib.lpunpack import SparseImage
+from utils import MyPrinter, TypeDetector, SetUtils, JsonUtil
 
 
 class SizeCalculator:
@@ -74,11 +72,6 @@ class ImagePacker:
         self.content_path = content_path
         self.img_path = content_path + ".img"
         self.img_name = os.path.basename(content_path)
-
-    def record_parts_info(self,img_type:str):
-        with open(self.img_path, "rb") as f:
-
-
 
     def pack_ext(self):
         self.deal_with_fsconfig()
@@ -173,10 +166,15 @@ class ImagePacker:
 class ImageUnpacker:
     def __init__(self, img_path: str):
         self.img_path = img_path
+        self.img_name = os.path.basename(img_path)
         self.content_path = img_path.rsplit(".", 1)[0]
         self.myprinter = MyPrinter()
 
+    def record_parts_info(self, img_type: str):
+        JsonUtil(tikpath.get_parts_info()).update(self.img_name, img_type)
+
     def unpack_ext(self):
+        self.record_parts_info("ext")
         base_name = os.path.basename(self.img_path).split(".")[0]
         with rich.Console().status(
             f"[yellow]正在提取{os.path.basename(self.img_path)}[/]"
@@ -186,6 +184,7 @@ class ImageUnpacker:
             )
 
     def unpack_erofs(self):
+        self.record_parts_info("erofs")
         bin_path = tikpath.get_binary_path("extract.erofs")
         subprocess.run(
             f"{bin_path} -x \
@@ -195,6 +194,7 @@ class ImageUnpacker:
         )
 
     def unpack_f2fs(self):
+        self.record_parts_info("f2fs")
         bin_path = tikpath.get_binary_path("extract.f2fs")
         subprocess.run(
             f"{bin_path} -o {tikpath.PROJECT_PATH} \
@@ -203,6 +203,7 @@ class ImageUnpacker:
         )
 
     def unpack_dtbo(self):
+        self.record_parts_info("dtbo")
         # remove the old dir before unpacking
         shutil.rmtree(self.content_path)
 
@@ -244,6 +245,7 @@ class ImageUnpacker:
         shutil.rmtree(dtbo_files_path)
 
     def unpack_dtb(self):
+        self.record_parts_info("dtb")
         dtbdir = self.img_path
         shutil.rmtree(dtbdir)
         if not os.path.exists(dtbdir):
@@ -289,12 +291,4 @@ class MyImage(object):
     def __init__(self, img_name: str):
         self.img_name = img_name
         self.img_path = os.path.join(tikpath.PROJECT_PATH, img_name)
-
-    def get_type(self):
-        return TypeDetector(self.img_path).get_type()
-
-    def unpack(self):
-        img_type = self.get_type()
-        match img_type:
-            case "ext":
-                ImageUnpacker()
+        self.img_type = TypeDetector(self.img_path).get_type().upper()

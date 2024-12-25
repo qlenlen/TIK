@@ -30,6 +30,10 @@ def get_binary_path(bname: str):
     return os.path.join(bin_path, bname)
 
 
+def get_parts_info():
+    return os.path.join(PROJECT_PATH, "config", "parts_info")
+
+
 def get_file_contexts(img_name: str):
     return os.path.join(PROJECT_PATH, "config", f"{img_name}_file_contexts")
 
