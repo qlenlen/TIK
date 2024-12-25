@@ -4,6 +4,7 @@ import platform as plat
 import sys
 from dataclasses import dataclass
 
+import json5
 from rich.console import Console
 from rich.text import Text
 
@@ -60,27 +61,26 @@ def blue(text, needN=True):
     return f"\033[36m{text}\033[0m" + ("\n" if needN else "")
 
 
-class JsonEdit:
-    def __init__(self, j_f):
-        self.file = j_f
+class JsonUtil:
+    def __init__(self, json_file: str):
+        self.json_file = json_file
 
-    def read(self):
-        if not os.path.exists(self.file):
-            return {}
-        with open(self.file, "r+", encoding="utf-8") as pf:
-            try:
-                return json.loads(pf.read())
-            except (Exception, BaseException):
-                return {}
+    @staticmethod
+    def read(json_file: str) -> dict:
+        """从json文件中读取数据"""
+        with open(json_file, "r", encoding="utf-8") as file:
+            return json5.load(file)
 
-    def write(self, data):
-        with open(self.file, "w+", encoding="utf-8") as pf:
-            json.dump(data, pf, indent=4)
+    def update(self, k, v):
+        """更新"""
+        data = JsonUtil.read(self.json_file)
+        data.update({k: v})
+        with open(self.json_file, "w", encoding="utf-8") as file:
+            json5.dump(data, file, ensure_ascii=False, indent=4)
 
-    def edit(self, name, value):
-        data = self.read()
-        data[name] = value
-        self.write(data)
+    def write(self, data: dict):
+        with open(self.json_file, "w", encoding="utf-8") as file:
+            json5.dump(data, file, ensure_ascii=False, indent=4)
 
 
 def versize(size):

@@ -12,6 +12,10 @@ def init():
     BIN_PATH = TIK_PATH + os.sep + "bin"
 
 
+def get_project_name():
+    return os.path.basename(PROJECT_PATH)
+
+
 def set_project_path(project_name: str):
     global PROJECT_PATH
     PROJECT_PATH = os.path.join(os.getcwd(), project_name)
@@ -22,8 +26,8 @@ def get_binary_path(bname: str):
     os_type = platform.system()
 
     # find binary from here
-    SUITABLE_BIN_PATH = os.path.join(BIN_PATH, os_type, arch_type) + os.sep
-    return os.path.join(SUITABLE_BIN_PATH, bname)
+    bin_path = os.path.join(BIN_PATH, os_type, arch_type) + os.sep
+    return os.path.join(bin_path, bname)
 
 
 def get_file_contexts(img_name: str):

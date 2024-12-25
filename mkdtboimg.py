@@ -2,7 +2,7 @@
 # Copyright 2017, The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# you may not use this json_file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
@@ -15,7 +15,7 @@
 
 from __future__ import print_function
 
-"""Tool for packing multiple DTB/DTBO files into a single image"""
+"""UserInterface for packing multiple DTB/DTBO files into a single image"""
 
 import argparse
 import os
@@ -33,7 +33,7 @@ class CompressionFormat:
 
 
 class DtEntry:
-    """Provides individual DT image file arguments to be added to a DTBO.
+    """Provides individual DT image json_file arguments to be added to a DTBO.
 
     Attributes:
         REQUIRED_KEYS_V0: 'keys' needed to be present in the dictionary ...ed to instantiate
@@ -76,7 +76,7 @@ class DtEntry:
             arg: String containing the argument provided on the command line.
 
         Returns:
-            An integer property read from DT file or argument string
+            An integer property read from DT json_file or argument string
             converted to integer
         """
 
@@ -148,7 +148,7 @@ class DtEntry:
         return "\n".join(sb)
 
     def compression_info(self):
-        """CompressionFormat: compression format for DT image file.
+        """CompressionFormat: compression format for DT image json_file.
 
         Args:
              version: Version of DTBO header, compression is only
@@ -160,12 +160,12 @@ class DtEntry:
 
     @property
     def dt_file(self):
-        """file: File handle to the DT image file."""
+        """json_file: File handle to the DT image json_file."""
         return self.__dt_file
 
     @property
     def size(self):
-        """int: size in bytes of the DT image file."""
+        """int: size in bytes of the DT image json_file."""
         return self.__dt_size
 
     @size.setter
@@ -174,7 +174,7 @@ class DtEntry:
 
     @property
     def dt_offset(self):
-        """int: offset in DTBO file for this DT image."""
+        """int: offset in DTBO json_file for this DT image."""
         return self.__dt_offset
 
     @dt_offset.setter
@@ -264,7 +264,7 @@ class Dtbo:
         )
 
     def _update_dt_entry_header(self, dt_entry, metadata_offset):
-        """Converts each DT entry header entry into binary data for DTBO file.
+        """Converts each DT entry header entry into binary data for DTBO json_file.
 
         Packs the current device tree table entry attribute into
         metadata buffer as device tree entry header.
@@ -272,7 +272,7 @@ class Dtbo:
         Args:
             dt_entry: DtEntry object for the header to be packed.
             metadata_offset: Offset into metadata buffer to begin writing.
-            dtbo_offset: Offset where the DT image file for this dt_entry can
+            dtbo_offset: Offset where the DT image json_file for this dt_entry can
                 be found in the resulting DTBO image.
         """
         if self.version == 0:
@@ -319,13 +319,13 @@ class Dtbo:
         self._update_dt_table_header()
 
     def _read_dtbo_header(self, buf):
-        """Reads DTBO file header into metadata buffer.
+        """Reads DTBO json_file header into metadata buffer.
 
         Unpack and read the DTBO table header from given buffer. The
         buffer size must exactly be equal to _DT_TABLE_HEADER_SIZE.
 
         Args:
-            buf: Bytebuffer read directly from the file of size
+            buf: Bytebuffer read directly from the json_file of size
                 _DT_TABLE_HEADER_SIZE.
         """
         (
@@ -342,17 +342,17 @@ class Dtbo:
         # verify the header
         if self.magic != self._DTBO_MAGIC and self.magic != self._ACPIO_MAGIC:
             raise ValueError(
-                f"Invalid magic number 0x{self.magic:x} in DTBO/ACPIO file"
+                f"Invalid magic number 0x{self.magic:x} in DTBO/ACPIO json_file"
             )
 
         if self.header_size != self._DT_TABLE_HEADER_SIZE:
             raise ValueError(
-                f"Invalid header size ({self.header_size:d}) in DTBO/ACPIO file"
+                f"Invalid header size ({self.header_size:d}) in DTBO/ACPIO json_file"
             )
 
         if self.dt_entry_size != self._DT_ENTRY_HEADER_SIZE:
             raise ValueError(
-                f"Invalid DT entry header size ({self.dt_entry_size:d}) in DTBO/ACPIO file"
+                f"Invalid DT entry header size ({self.dt_entry_size:d}) in DTBO/ACPIO json_file"
             )
 
     def _read_dt_entries_from_metadata(self):
@@ -387,12 +387,12 @@ class Dtbo:
             offset += self._DT_ENTRY_HEADER_INTS
 
     def _read_dtbo_image(self):
-        """Parse the input file and instantiate this object."""
+        """Parse the input json_file and instantiate this object."""
 
         # First check if we have enough to read the header
         file_size = os.fstat(self.__file.fileno()).st_size
         if file_size < self._DT_TABLE_HEADER_SIZE:
-            raise ValueError("Invalid DTBO file")
+            raise ValueError("Invalid DTBO json_file")
 
         self.__file.seek(0)
         buf = self.__file.read(self._DT_TABLE_HEADER_SIZE)
@@ -403,7 +403,7 @@ class Dtbo:
         )
         if file_size < self.__metadata_size:
             raise ValueError(
-                f"Invalid or truncated DTBO file of size {file_size:d} expected {self.__metadata_size:d}"
+                f"Invalid or truncated DTBO json_file of size {file_size:d} expected {self.__metadata_size:d}"
             )
 
         num_ints = (
@@ -420,13 +420,13 @@ class Dtbo:
         self._read_dt_entries_from_metadata()
 
     def _find_dt_entry_with_same_file(self, dt_entry):
-        """Finds DT Entry that has identical backing DT file.
+        """Finds DT Entry that has identical backing DT json_file.
 
         Args:
             dt_entry: DtEntry object whose 'dtfile' we find for existence in the
                 current 'dt_entries'.
         Returns:
-            If a match by file path is found, the corresponding DtEntry object
+            If a match by json_file path is found, the corresponding DtEntry object
             from internal list is returned. If not, 'None' is returned.
         """
 
@@ -442,7 +442,7 @@ class Dtbo:
 
         Args:
             file_handle: The Dtbo File handle corresponding to this object.
-                The file handle can be used to write to (in case of 'create')
+                The json_file handle can be used to write to (in case of 'create')
                 or read from (in case of 'dump')
         """
 
@@ -452,7 +452,7 @@ class Dtbo:
         self.__metadata_size = 0
 
         # if page_size is given, assume the object is being instantiated to
-        # create a DTBO file
+        # create a DTBO json_file
         if page_size:
             if dt_type == "acpi":
                 self.magic = self._ACPIO_MAGIC
@@ -495,7 +495,7 @@ class Dtbo:
 
     @property
     def dt_entries(self):
-        """Returns a list of DtEntry objects found in DTBO file."""
+        """Returns a list of DtEntry objects found in DTBO json_file."""
         return self.__dt_entries
 
     def compress_dt_entry(self, compression_format, dt_entry_file):
@@ -537,7 +537,7 @@ class Dtbo:
         """Adds DT image files to the DTBO object.
 
         Adds a list of Dtentry Objects to the DTBO image. The changes are not
-        committed to the output file until commit() is called.
+        committed to the output json_file until commit() is called.
 
         Args:
             dt_entries: List of DtEntry object to be added.
@@ -583,15 +583,15 @@ class Dtbo:
         return dt_entry_buf
 
     def extract_dt_file(self, idx, fout, decompress):
-        """Extract DT Image files embedded in the DTBO file.
+        """Extract DT Image files embedded in the DTBO json_file.
 
-        Extracts Device Tree blob image file at given index into a file handle.
+        Extracts Device Tree blob image json_file at given index into a json_file handle.
 
         Args:
-            idx: Index of the DT entry in the DTBO file.
+            idx: Index of the DT entry in the DTBO json_file.
             fout: File handle where the DTB at index idx to be extracted into.
             decompress: If a DT entry is compressed, decompress it before writing
-                it to the file handle.
+                it to the json_file handle.
 
         Raises:
             ValueError: if invalid DT entry index or compression format is detected.
@@ -620,18 +620,18 @@ class Dtbo:
             fout.write(self.__file.read(size))
 
     def commit(self, dt_entry_buf):
-        """Write out staged changes to the DTBO object to create a DTBO file.
+        """Write out staged changes to the DTBO object to create a DTBO json_file.
 
-        Writes a fully instantiated Dtbo Object into the output file using the
-        file handle present in '_file'. No checks are performed on the object
-        except for existence of output file handle on the object before writing
-        out the file.
+        Writes a fully instantiated Dtbo Object into the output json_file using the
+        json_file handle present in '_file'. No checks are performed on the object
+        except for existence of output json_file handle on the object before writing
+        out the json_file.
 
         Args:
             dt_entry_buf: Buffer containing all DT entries.
         """
         if not self.__file:
-            raise ValueError("No file given to write to.")
+            raise ValueError("No json_file given to write to.")
 
         if not self.__dt_entries:
             raise ValueError("No DT image files to embed into DTBO image given.")
@@ -645,9 +645,9 @@ class Dtbo:
 
 
 def parse_dt_entry(global_args, arglist):
-    """Parse arguments for single DT entry file.
+    """Parse arguments for single DT entry json_file.
 
-    Parses command line arguments for single DT image file while
+    Parses command line arguments for single DT image json_file while
     creating a Device tree blob overlay (DTBO).
 
     Args:
@@ -722,7 +722,7 @@ def parse_dt_entries(global_args, arg_list):
     dt_entries = []
     img_file_idx = []
     idx = 0
-    # find all positional arguments (i.e. DT image file paths)
+    # find all positional arguments (i.e. DT image json_file paths)
     for arg in arg_list:
         if not arg.startswith("--"):
             img_file_idx.append(idx)
@@ -753,7 +753,7 @@ def create_dtbo_image(fout, list, page_size=2048, dt_type="dtb", flags="0"):
     """Create Device Tree Blob Overlay image using provided arguments.
 
     Args:
-        fout: Output file handle to write to.
+        fout: Output json_file handle to write to.
         argv: list of command line arguments.
     """
 
@@ -776,10 +776,10 @@ def create_dtbo_image(fout, list, page_size=2048, dt_type="dtb", flags="0"):
 
 
 def dump_dtbo_image(fin, dtfilename, decompress=False):
-    """Dump DTBO file.
+    """Dump DTBO json_file.
 
     Dump Device Tree Blob Overlay metadata as output and the device
-    tree image files embedded in the DTBO image into file(s) provided
+    tree image files embedded in the DTBO image into json_file(s) provided
     as arguments
 
     Args:

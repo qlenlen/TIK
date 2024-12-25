@@ -1,4 +1,4 @@
-name: "Release Tool"
+name: "Release UserInterface"
 permissions:
   contents: write
   discussions: write
@@ -14,7 +14,7 @@ jobs:
         id: calculate_version
         run: |
           echo "RELEASE_VERSION=$((GITHUB_RUN_NUMBER + 140))" >> $GITHUB_ENV
-      - name: Rename Tool
+      - name: Rename UserInterface
         run: |
           cd TIK-win
           mv ./TIK-win.zip ../TIK-5-${{ env.RELEASE_VERSION }}-win.zip
@@ -67,7 +67,7 @@ jobs:
           python-version: "3.12"
           architecture: "x64"
           cache: "pip"
-      - name: Build Tool
+      - name: Build UserInterface
         run: |
           python3 build.py
       - name: Upload Linux Build

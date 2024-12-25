@@ -142,8 +142,8 @@ class SparseHeader(object):
             self.magic,  # 0xed26ff3a
             self.major_version,  # (0x1) - reject images with higher major versions
             self.minor_version,  # (0x0) - allow images with higer minor versions
-            self.file_hdr_sz,  # 28 bytes for first revision of the file format
-            self.chunk_hdr_sz,  # 12 bytes for first revision of the file format
+            self.file_hdr_sz,  # 28 bytes for first revision of the json_file format
+            self.chunk_hdr_sz,  # 12 bytes for first revision of the json_file format
             self.blk_sz,  # block size in bytes, must be a multiple of 4 (4096)
             self.total_blks,  # total blocks in the non-sparse output image
             self.total_chunks,  # total chunks in the sparse input image
@@ -165,7 +165,7 @@ class SparseChunkHeader(object):
             self.chunk_type,  # 0xCAC1 -> raw; 0xCAC2 -> fill; 0xCAC3 -> don't care */
             self.reserved,
             self.chunk_sz,  # in blocks in output image * /
-            self.total_sz,  # in bytes of chunk input file including chunk header and data * /
+            self.total_sz,  # in bytes of chunk input json_file including chunk header and data * /
         ) = struct.unpack(fmt, buffer[0 : struct.calcsize(fmt)])
 
 

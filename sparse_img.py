@@ -1,7 +1,7 @@
 # Copyright (C) 2014 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# you may not use this json_file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #      http://www.apache.org/licenses/LICENSE-2.0
@@ -22,9 +22,9 @@ import rangelib
 
 
 class SparseImage(object):
-    """Wraps a sparse image file into an image object.
+    """Wraps a sparse image json_file into an image object.
 
-    Wraps a sparse image file (and optional file map and clobbered_blocks) into
+    Wraps a sparse image json_file (and optional json_file map and clobbered_blocks) into
     an image object suitable for passing to BlockImageDiff. file_map contains
     the mapping between files and their blocks. clobbered_blocks contains the set
     of blocks that should be always written to the target regardless of the old
@@ -182,7 +182,7 @@ class SparseImage(object):
         particular is not necessarily equal to the number of ranges in
         'ranges'.
 
-        This generator is stateful -- it depends on the open file object
+        This generator is stateful -- it depends on the open json_file object
         contained in this SparseImage, so you should not try to run two
         instances of this generator on the same object simultaneously."""
 
@@ -227,14 +227,14 @@ class SparseImage(object):
                 assert ranges.size() == ranges.intersect(remaining).size()
 
                 # Currently we assume that blocks in clobbered_blocks are not part of
-                # any file.
+                # any json_file.
                 assert not clobbered_blocks.overlaps(ranges)
                 remaining = remaining.subtract(ranges)
 
         remaining = remaining.subtract(clobbered_blocks)
 
         # For all the remaining blocks in the care_map (ie, those that
-        # aren't part of the data for any file nor part of the clobbered_blocks),
+        # aren't part of the data for any json_file nor part of the clobbered_blocks),
         # divide them into blocks that are all zero and blocks that aren't.
         # (Zero blocks are handled specially because (1) there are usually
         # a lot of them and (2) bsdiff handles files with long sequences of
@@ -248,7 +248,7 @@ class SparseImage(object):
             reference = "\0" * self.blocksize
 
         # Workaround for bug 23227672. For squashfs, we don't have a system.map. So
-        # the whole system image will be treated as a single file. But for some
+        # the whole system image will be treated as a single json_file. But for some
         # unknown bug, the updater will be killed due to OOM when writing back the
         # patched image to flash (observed on lenok-userdebug MEA49). Prior to
         # getting a real fix, we evenly divide the non-zero blocks into smaller
@@ -299,6 +299,6 @@ class SparseImage(object):
             out["__COPY"] = clobbered_blocks
 
     def ResetFileMap(self):
-        """Throw away the file map and treat the entire image as
+        """Throw away the json_file map and treat the entire image as
         undifferentiated data."""
         self.file_map = {"__DATA": self.care_map}

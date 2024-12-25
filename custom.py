@@ -17,3 +17,9 @@ def dis_avb(fstab: str):
     details = re.sub(",avb_keys=.*avbpubkey", "", details)
     with open(fstab, "w") as tf:
         tf.write(details)
+
+
+def dis_data_encryption(fstab): ...
+
+
+def slim_partition(): ...

@@ -108,7 +108,7 @@ def context_patch(rules_from_config: Dict[str, List[str]], dir_path: str) -> tup
     else:
         permission_d = [f"u:object_r:{os.path.basename(dir_path)}_file:s0"]
 
-    # here i refers to the file path
+    # here i refers to the json_file path
     for i in scan_dir(os.path.abspath(dir_path)):
         # 预处理
         i = pre(i)

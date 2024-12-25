@@ -8,12 +8,32 @@ import extract_dtb
 import rich
 from rich.progress import track
 
+import contextpatch
+import fspatch
 import imgextractor
 import lpunpack
 import mkdtboimg
 import tikpath
+import utils
 from lpunpack import SparseImage
 from utils import MyPrinter, TypeDetector, SetUtils
+
+
+class SizeCalculator:
+    def __init__(self, content_path: str):
+        self.content_path = content_path
+
+    def calculate_dir_size(self) -> int:
+        total_size = 0
+        for root, _, files in os.walk(self.content_path):
+            for name in files:
+                file_path = os.path.join(root, name)
+                if not os.path.islink(file_path):
+                    total_size += os.path.getsize(file_path)
+        return total_size
+
+    def resize(self):
+        return self.calculate_dir_size() * 1.1
 
 
 class ImageConverter:
@@ -55,8 +75,41 @@ class ImagePacker:
         self.img_path = content_path + ".img"
         self.img_name = os.path.basename(content_path)
 
+    def record_parts_info(self,img_type:str):
+        with open(self.img_path, "rb") as f:
+
+
+
     def pack_ext(self):
-        pass
+        self.deal_with_fsconfig()
+        self.deal_with_file_contexts()
+
+        ext_size = SizeCalculator(self.content_path).resize()
+        size = int(ext_size / int(SetUtils.BLOCKSIZE))
+        utc = int(time.time())
+        subprocess.run(
+            rf"{tikpath.get_binary_path('mke2fs')} \
+                -O ^has_journal \
+                -L {self.img_name} \
+                -I 256 \
+                -M /{self.img_name} \
+                -m 0 \
+                -t ext4 \
+                -b {SetUtils.BLOCKSIZE} \
+                {self.img_path} \
+                {size}",
+            shell=True,
+        )
+        subprocess.run(
+            rf"{tikpath.get_binary_path('e2fsdroid')} -e \
+                -T {utc} \
+                -S {tikpath.get_file_contexts(self.img_name)} \
+                -C {tikpath.get_fs_config(self.img_name)} \
+                -a /{self.img_name} \
+                -f {self.content_path} \
+                {self.img_path}",
+            shell=True,
+        )
 
     def pack_erofs(self):
         utc = int(time.time())
@@ -72,8 +125,46 @@ class ImagePacker:
             shell=True,
         )
 
+    def deal_with_fsconfig(self):
+        # patch file_contexts and fs_config
+        fspatch.main(self.content_path, tikpath.get_fs_config(self.img_name))
+        utils.remove_duplicate_lines(tikpath.get_fs_config(self.img_name))
+
+    def deal_with_file_contexts(self):
+        file_contexts_path = tikpath.get_file_contexts(self.img_name)
+        if os.path.exists(file_contexts_path):
+            contextpatch.main(self.content_path, file_contexts_path)
+            utils.remove_duplicate_lines(file_contexts_path)
+
     def pack_f2fs(self):
-        pass
+        self.deal_with_fsconfig()
+        self.deal_with_file_contexts()
+
+        size_f2fs = (54 * 1024 * 1024) + SizeCalculator(self.content_path).resize()
+        size_f2fs = int(size_f2fs)
+
+        with open(self.img_path, "wb") as f:
+            f.truncate(size_f2fs)
+
+        subprocess.run(
+            rf"{tikpath.get_binary_path('mkfs.f2fs')} {self.img_path} \
+                -O extra_attr \
+                -O inode_checksum \
+                -O sb_checksum \
+                -O compression \
+                -f",
+            shell=True,
+        )
+
+        subprocess.run(
+            rf"{tikpath.get_binary_path('sload.f2fs')} \
+                -f {self.content_path} \
+                -C {tikpath.get_fs_config(self.img_name)} \
+                -s {tikpath.get_file_contexts(self.img_name)} \
+                -t /{self.img_name} \
+                {self.img_path} \
+                -c"
+        )
 
     def pack(self):
         pass

@@ -166,14 +166,14 @@ class ext4_inode(ext4_struct):
     S_IRUSR = 0x100  # Owner can read
     S_ISVTX = 0x200  # Sticky bit (only owner can delete)
     S_ISGID = (
-        0x400  # Set GID (execute with privileges of group owner of the file's group)
+        0x400  # Set GID (execute with privileges of group owner of the json_file's group)
     )
-    S_ISUID = 0x800  # Set UID (execute with privileges of the file's owner)
+    S_ISUID = 0x800  # Set UID (execute with privileges of the json_file's owner)
     S_IFIFO = 0x1000  # FIFO device (named pipe)
     S_IFCHR = 0x2000  # Character device (raw, unbuffered, aligned, direct access to hardware storage)
     S_IFDIR = 0x4000  # Directory
     S_IFBLK = 0x6000  # Block device (buffered, arbitrary access to storage)
-    S_IFREG = 0x8000  # Regular file
+    S_IFREG = 0x8000  # Regular json_file
     S_IFLNK = 0xA000  # Symbolic link
     S_IFSOCK = 0xC000  # Socket
 
@@ -246,7 +246,7 @@ class ext4_superblock(ext4_struct):
     INCOMPAT_32BIT = 0x66
 
     INCOMPAT_FILETYPE = (
-        0x2  # Directory entries record file type (instead of inode flags)
+        0x2  # Directory entries record json_file type (instead of inode flags)
     )
     _fields_ = [
         ("s_inodes_count", ctypes.c_uint),  # 0x0000
@@ -440,8 +440,8 @@ class ext4_xattr_ibody_header(ext4_struct):
 
 
 class InodeType:
-    UNKNOWN = 0x0  # Unknown file type
-    FILE = 0x1  # Regular file
+    UNKNOWN = 0x0  # Unknown json_file type
+    FILE = 0x1  # Regular json_file
     DIRECTORY = 0x2  # Directory
     CHARACTER_DEVICE = 0x3  # Character device
     BLOCK_DEVICE = 0x4  # Block device
@@ -449,7 +449,7 @@ class InodeType:
     SOCKET = 0x6  # Socket
     SYMBOLIC_LINK = 0x7  # Symbolic link
     CHECKSUM = (
-        0xDE  # Checksum entry; not really a file type, but a type of directory entry
+        0xDE  # Checksum entry; not really a json_file type, but a type of directory entry
     )
 
 

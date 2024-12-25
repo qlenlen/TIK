@@ -43,7 +43,7 @@ signal.signal(signal.SIGINT, handle_sigint)
 
 
 def copy_url(task_id: TaskID, url: str, path: str) -> None:
-    """Copy data from a url to a local file."""
+    """Copy data from a url to a local json_file."""
     progress.console.log(f"Requesting {url}")
     response = urlopen(url)
     # This will break if the response doesn't contain content length

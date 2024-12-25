@@ -167,7 +167,7 @@ def GetFileInformationByHandleEx(
     if kind == FILE_INFO_BY_HANDLE_CLASS.FileCaseSensitiveInfo:
         dtype = FILE_CASE_SENSITIVE_INFO
     else:
-        raise ValueError("Invalid file info class")
+        raise ValueError("Invalid json_file info class")
 
     data = dtype()
 
@@ -182,7 +182,7 @@ def SetFileInformationByHandle(
     if kind == FILE_INFO_BY_HANDLE_CLASS.FileCaseSensitiveInfo:
         dtype = FILE_CASE_SENSITIVE_INFO
     else:
-        raise ValueError("Invalid file info class")
+        raise ValueError("Invalid json_file info class")
 
     _SetFileInformationByHandle(h, kind, byref(data), sizeof(dtype))
 

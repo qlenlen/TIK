@@ -2,3 +2,4 @@ pyinstaller
 Requests
 rich
 extract_dtb
+json5

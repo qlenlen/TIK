@@ -1,4 +1,4 @@
-name: "Build Tool"
+name: "Build UserInterface"
 
 permissions:
   contents: write
@@ -40,7 +40,7 @@ jobs:
           python-version: "3.12"
           architecture: "x64"
           cache: "pip"
-      - name: Build Tool
+      - name: Build UserInterface
         run: |
           python3 build.py
       - name: Upload Linux Build

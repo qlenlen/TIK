@@ -10,14 +10,15 @@ from rich.progress import track
 
 import banner
 import contextpatch
+import custom
 import fspatch
 import mkdtboimg
 import tikpath
 import utils
-from api import cls, dir_has, dirsize
-from image import ImageConverter, ImageUnpacker
+from api import cls, dir_has, Dirsize
+from image import ImageConverter, ImageUnpacker, ImagePacker
 from log import *
-from utils import JsonEdit, simg2img, versize, SetUtils, TypeDetector
+from utils import JsonUtil, simg2img, versize, SetUtils, TypeDetector, MyPrinter
 
 
 def greet():
@@ -40,32 +41,69 @@ def greet():
         print(f"\033[36m---{another}《{fr}》\033[0m\n")
 
 
-class Tool:
+class UserInterface:
     """
-    主程序的主循环
+    与用户交互的主循环
     """
 
     printer = utils.MyPrinter()
 
     def __init__(self):
-        self.local_dir = os.getcwd()
-        print_yellow(f"TIK根目录：{self.local_dir}")
-
-        # current working project
-        self.project_name = ""
-        # the absolute path of the project
-        self.project_root = ""
         # skip them when recognize projects
-        self.WHITELIST = ["bin", "ksu-derviers", "__pycache__", "config"]
+        self.WHITELIST: list[str] = ["bin", "ksu-derviers", "__pycache__", "config"]
+        self.user_projects: dict[str, str] = self.get_user_projects()
 
     def user_continue(self):
-        input("任意按钮继续")
+        self.printer.print_yellow("任意按钮继续")
+        input("")
 
-    def main(self):
-        # key-value pairs of the projects(number: project_name)
-        project_num = 0
+    def get_user_projects(self) -> dict[str, str]:
+        """获取用户的所有现存项目"""
+        project_num = 1
         projects = {}
 
+        for project_dir in os.listdir(tikpath.TIK_PATH):
+
+            # neglect the directories in the whitelist
+            if project_dir in self.WHITELIST or project_dir.startswith("."):
+                continue
+
+            if os.path.isdir(os.path.join(tikpath.TIK_PATH, project_dir)):
+                # add key-pair into the dict
+                projects.update({str(project_num): project_dir})
+                project_num += 1
+
+        return projects
+
+    def delete_project(self):
+        if (
+            delete_index := input("  请输入你要删除的项目序号:").strip()
+        ) in self.user_projects.keys():
+            if input(f"  确认删除{self.user_projects[delete_index]}？[1/0]") == "1":
+                shutil.rmtree(
+                    os.path.join(tikpath.TIK_PATH, self.user_projects[delete_index])
+                )
+            else:
+                print_red("取消删除")
+        else:
+            print_red("  项目不存在！")
+            self.user_continue()
+
+    def create_project(self):
+        new_project_name = input("请输入项目名称(非中文)：").strip()
+        if new_project_name:
+            if os.path.exists(os.path.join(tikpath.TIK_PATH, new_project_name)):
+                wrap_red(f"项目已存在！请更换名称")
+                self.user_continue()
+            os.makedirs(os.path.join(tikpath.TIK_PATH, new_project_name, "config"))
+            os.makedirs(os.path.join(tikpath.TIK_PATH, new_project_name, "TI_out"))
+            print_green(f"项目{new_project_name}创建成功！")
+            self.user_projects = self.get_user_projects()
+        else:
+            print_red("  Input error!")
+            self.user_continue()
+
+    def main(self):
         # clear the screen and show the banner
         cls()
         greet()
@@ -75,94 +113,54 @@ class Tool:
         self.printer.print_green("   [0]  新建项目\n")
 
         # list all the projects
-        for project_dir in os.listdir(self.local_dir):
-            # neglect the directories in the whitelist
-            if project_dir in self.WHITELIST or project_dir.startswith("."):
-                continue
-            # make sure it is a directory
-            if os.path.isdir(os.path.join(self.local_dir, project_dir)):
-                project_num += 1
-                print(f"   [{project_num}]  {project_dir}\n")
-                projects.update({str(project_num): project_dir})
+        for project_num, project_dir in self.get_user_projects().items():
+            self.printer.print_white(f"   [{project_num}]  {project_dir}\n")
 
-        print("  --------------------------------------")
-        print("\033[33m  [77] 设置  [88] 退出\033[0m\n")
+        self.printer.print_white("  --------------------------------------")
+        self.printer.print_yellow("  [77] 设置  [88] 退出\n")
 
         op_pro = input("  请输入序号：")
 
-        if op_pro == "00":
-            # delete the project
-            if (
-                delete_index := input("  请输入你要删除的项目序号:").strip()
-            ) in projects.keys():
-                if input(f"  确认删除{projects[delete_index]}？[1/0]") == "1":
-                    shutil.rmtree(
-                        os.path.join(tikpath.TIK_PATH, projects[delete_index])
-                    )
+        match op_pro:
+            case "00":
+                self.delete_project()
+            case "0":
+                self.create_project()
+            case "88":
+                cls()
+                print_green("\n感谢使用TI-KITCHEN5, 再见！")
+                sys.exit(0)
+            case _ if op_pro.isdigit():
+                if op_pro in self.user_projects.keys():
+                    # initialize the project
+                    project_name = self.user_projects.get(op_pro, "")
+                    tikpath.set_project_path(project_name)
+                    self.project()
                 else:
-                    print_red("取消删除")
-            else:
-                print_red("  项目不存在！")
-                self.user_continue()
-
-        elif op_pro == "0":
-            new_project_name = input("请输入项目名称(非中文)：")
-            if new_project_name:
-                if os.path.exists(os.path.join(self.local_dir, new_project_name)):
-                    wrap_red(f"项目已存在！请更换名称")
+                    print_red("  Input error!")
                     self.user_continue()
-                os.makedirs(os.path.join(self.local_dir, new_project_name, "config"))
-                os.makedirs(os.path.join(self.local_dir, new_project_name, "TI_out"))
-                print_green(f"项目{new_project_name}创建成功！")
-            else:
+            case _:
                 print_red("  Input error!")
                 self.user_continue()
-
-        elif op_pro == "88":
-            cls()
-            print_green("\n感谢使用TI-KITCHEN5, 再见！")
-            sys.exit(0)
-
-        elif op_pro == "77":
-            print_red("设计中...")
-            self.user_continue()
-
-        # enter to the working project
-        elif op_pro.isdigit():
-            if op_pro in projects.keys():
-                # initialize the project
-                self.project_name = projects.get(op_pro, "")
-                self.project_root = os.path.join(self.local_dir, self.project_name)
-                self.project()
-            else:
-                print_red("  Input error!")
-                self.user_continue()
-
-        else:
-            print_red("  Input error!")
-            self.user_continue()
 
         # back to the main menu
         self.main()
 
-    @staticmethod
-    def dis_data_encryption(fstab): ...
-
     def project(self):
         cls()
+        project_name = tikpath.get_project_name()
+        project_root = tikpath.PROJECT_PATH
 
-        tikpath.set_project_path(self.project_name)
-
-        print(utils.red("> 项目菜单"))
+        self.printer.print_red("> 项目菜单")
         (
-            print(f"  项目：{self.project_name}\033[91m(不完整)\033[0m\n")
+            print(f"  项目：{project_name}\033[91m(不完整)\033[0m\n")
             if not os.path.exists(os.path.abspath("config"))
-            else print(f"  项目：{self.project_name}\n")
+            else print(f"  项目：{project_name}\n")
         )
 
         # create the necessary directories if not exists
-        os.makedirs(self.project_root + os.sep + "TI_out", exist_ok=True)
-        os.makedirs(self.project_root + os.sep + "config", exist_ok=True)
+        os.makedirs(project_root + os.sep + "TI_out", exist_ok=True)
+        os.makedirs(project_root + os.sep + "config", exist_ok=True)
 
         self.printer.print_yellow("    1> 解包菜单     2> 打包菜单\n")
         self.printer.print_blue("    3> 定制功能     4> 精简分区\n")
@@ -170,42 +168,33 @@ class Tool:
 
         op_menu = input("    请输入编号: ")
 
-        if op_menu == "00":
-            self.main()
-            return
-
-        elif op_menu == "1":
-            unpack_choo()
-
-        elif op_menu == "2":
-            pack_choo()
-
-        elif op_menu == "3":
-            self.custom_rom()
-
-        elif op_menu == "4":
-            self.slim_partition()
-
-        elif op_menu == "88":
-            cls()
-            print_green("\n感谢使用TI-KITCHEN5,再见！")
-            sys.exit(0)
-
-        else:
-            wrap_red("   Input error!")
-            self.user_continue()
+        match op_menu:
+            case "00":
+                self.main()
+                return
+            case "1":
+                self.unpack_choo()
+            case "2":
+                self.pack_choo()
+            case "3":
+                self.custom_rom()
+            case "4":
+                custom.slim_partition()
+            case "88":
+                cls()
+                print_green("\n感谢使用TI-KITCHEN5,再见！")
+                sys.exit(0)
+            case _:
+                wrap_red("   Input error!")
+                self.user_continue()
 
         self.project()
 
-    def slim_partition(self):
-        print_red("暂未支持")
-        self.user_continue()
-        pass
-
     def custom_rom(self):
         cls()
+
         print(" \033[31m>定制菜单 \033[0m\n")
-        print(f"  项目：{self.project_name}\n")
+        print(f"  项目：{tikpath.get_project_name()}\n")
         print("\033[33m    0> 返回上级  1> xxxx\033[0m\n")
         print("\033[33m    2> KSU修补   3> Apatch修补\033[0m\n")
         print("\033[33m    4> 去除avb   5> 去除data加密\033[0m\n")
@@ -219,194 +208,202 @@ class Tool:
             ...
         else:
             wrap_red("   Input error!")
-        self.user_continue()
+            self.user_continue()
         self.custom_rom()
 
+    def unpack_choo(self):
+        """解包前端"""
+        cls()
+        project_dir = tikpath.PROJECT_PATH
 
-def unpack_choo():
-    """解包前端"""
-    cls()
-    project_dir = tikpath.PROJECT_PATH
+        print(" \033[31m >分解 \033[0m\n")
+        filen = 0
+        files = {}
+        infos = {}
+        wrap_red(f"  请将文件放于{project_dir}根目录下！\n")
+        print(" [0]- 分解所有文件\n")
 
-    print(" \033[31m >分解 \033[0m\n")
-    filen = 0
-    files = {}
-    infos = {}
-    wrap_red(f"  请将文件放于{project_dir}根目录下！\n")
-    print(" [0]- 分解所有文件\n")
+        if dir_has(project_dir, ".img"):
+            print("\033[33m [Img]文件\033[0m\n")
+            for img0 in os.listdir(project_dir):
+                if img0.endswith(".img"):
+                    if os.path.isfile(os.path.abspath(img0)):
+                        filen += 1
+                        info = TypeDetector(os.path.abspath(img0)).get_type()
+                        (
+                            wrap_red(f"   [{filen}]- {img0} <UNKNOWN>\n")
+                            if info == "unknow"
+                            else print(f"   [{filen}]- {img0} <{info.upper()}>\n")
+                        )
+                        files[filen] = img0
+                        infos[filen] = "img" if info != "sparse" else "sparse"
 
-    if dir_has(project_dir, ".img"):
-        print("\033[33m [Img]文件\033[0m\n")
-        for img0 in os.listdir(project_dir):
-            if img0.endswith(".img"):
-                if os.path.isfile(os.path.abspath(img0)):
-                    filen += 1
-                    info = TypeDetector(os.path.abspath(img0)).get_type()
-                    (
-                        wrap_red(f"   [{filen}]- {img0} <UNKNOWN>\n")
-                        if info == "unknow"
-                        else print(f"   [{filen}]- {img0} <{info.upper()}>\n")
-                    )
-                    files[filen] = img0
-                    infos[filen] = "img" if info != "sparse" else "sparse"
-
-    print("\n\033[33m  [00] 返回  [77] 循环解包  \033[0m")
-    print("  --------------------------------------")
-    filed = input("  请输入对应序号：")
-
-    if filed == "0":
-        for v in files.keys():
-            unpack(files[v], infos[v], project_dir)
-
-    elif filed == "77":
-        imgcheck = 0
-        upacall = input("  是否解包所有文件？ [1/0]")
-        for v in files.keys():
-            if upacall != "1":
-                imgcheck = input(f"  是否解包{files[v]}?[1/0]")
-            if upacall == "1" or imgcheck != "0":
-                unpack(files[v], infos[v], project_dir)
-
-    elif filed == "00":
-        return
-
-    elif filed.isdigit():
-        (
-            unpack(files[int(filed)], infos[int(filed)], project_dir)
-            if int(filed) in files.keys()
-            else wrap_red("Input error!")
-        )
-
-    else:
-        wrap_red("Input error!")
-
-    input("任意按钮继续")
-    unpack_choo()
-
-
-def pack_choo():
-    """打包前端"""
-    cls()
-
-    project_dir = tikpath.PROJECT_PATH
-    print(" \033[31m >打包 \033[0m\n")
-    partn = 0
-    parts, types = {}, {}
-    json_ = JsonEdit(project_dir + os.sep + "config" + os.sep + "parts_info").read()
-    if not os.path.exists(project_dir + os.sep + "config"):
-        os.makedirs(project_dir + os.sep + "config")
-    if project_dir:
-        print("   [0]- 打包所有镜像\n")
-        for packs in os.listdir(project_dir):
-            if os.path.isdir(project_dir + os.sep + packs):
-                if os.path.exists(
-                    project_dir + os.sep + "config" + os.sep + packs + "_fs_config"
-                ):
-                    partn += 1
-                    parts[partn] = packs
-                    if packs in json_.keys():
-                        typeo = json_[packs]
-                    else:
-                        typeo = "ext"
-                    types[partn] = typeo
-                    print(f"   [{partn}]- {packs} <{typeo}>\n")
-                elif os.path.exists(project_dir + os.sep + packs + os.sep + "comp"):
-                    partn += 1
-                    parts[partn] = packs
-                    types[partn] = "bootimg"
-                    print(f"   [{partn}]- {packs} <bootimg>\n")
-                elif os.path.exists(
-                    project_dir + os.sep + "config" + os.sep + "dtbinfo_" + packs
-                ):
-                    partn += 1
-                    parts[partn] = packs
-                    types[partn] = "dtb"
-                    print(f"   [{partn}]- {packs} <dtb>\n")
-                elif os.path.exists(
-                    project_dir + os.sep + "config" + os.sep + "dtboinfo_" + packs
-                ):
-                    partn += 1
-                    parts[partn] = packs
-                    types[partn] = "dtbo"
-                    print(f"   [{partn}]- {packs} <dtbo>\n")
-
-        print("\n\033[33m [66] 打包Super [00]返回\033[0m")
+        print("\n\033[33m  [00] 返回  [77] 循环解包  \033[0m")
         print("  --------------------------------------")
         filed = input("  请输入对应序号：")
-        # default
-        form = "img"
-        # default is raw
-        israw = True
 
-        # pack all images
         if filed == "0":
-            print_yellow("您的选择是：打包所有镜像")
-            op_menu = input("  输出文件格式[1]raw [2]sparse:")
-            if op_menu == "2":
-                israw = False
-            imgtype = input("  手动打包所有分区格式为：[1]ext4 [2]erofs [3]f2fs:")
-            if imgtype == "1":
-                imgtype = "ext"
-            elif imgtype == "2":
-                imgtype = "erofs"
-            else:
-                imgtype = "f2fs"
+            for v in files.keys():
+                unpack(files[v], infos[v], project_dir)
 
-            for f in track(parts.keys()):
-                print_yellow(f"打包{parts[f]}...")
-                if types[f] == "bootimg":
-                    dboot(
-                        project_dir + os.sep + parts[f],
-                        project_dir + os.sep + parts[f] + ".img",
-                    )
-                elif types[f] == "dtb":
-                    makedtb(parts[f], project_dir)
-                elif types[f] == "dtbo":
-                    makedtbo(parts[f], project_dir)
-                else:
-                    pack_img(parts[f], imgtype, israw)
-        elif filed == "66":
-            packsuper(project_dir)
+        elif filed == "77":
+            imgcheck = 0
+            upacall = input("  是否解包所有文件？ [1/0]")
+            for v in files.keys():
+                if upacall != "1":
+                    imgcheck = input(f"  是否解包{files[v]}?[1/0]")
+                if upacall == "1" or imgcheck != "0":
+                    unpack(files[v], infos[v], project_dir)
+
         elif filed == "00":
             return
+
         elif filed.isdigit():
-            if int(filed) in parts.keys():
-                if types[int(filed)] not in [
-                    "bootimg",
-                    "dtb",
-                    "dtbo",
-                ]:
-                    imgtype = input(
-                        "  手动打包所有分区格式为：[1]ext4 [2]erofs [3]f2fs:"
-                    )
-                    if imgtype == "1":
-                        imgtype = "ext"
-                    elif imgtype == "2":
-                        imgtype = "erofs"
-                    else:
-                        imgtype = "f2fs"
+            (
+                unpack(files[int(filed)], infos[int(filed)], project_dir)
+                if int(filed) in files.keys()
+                else wrap_red("Input error!")
+            )
 
-                    if input("  输出文件格式[1]raw [2]sparse:") == "2":
-                        israw = False
-
-                print_yellow(f"打包{parts[int(filed)]}")
-                if types[int(filed)] == "bootimg":
-                    dboot(
-                        project_dir + os.sep + parts[int(filed)],
-                        project_dir + os.sep + parts[int(filed)] + ".img",
-                    )
-                elif types[int(filed)] == "dtb":
-                    makedtb(parts[int(filed)], project_dir)
-                elif types[int(filed)] == "dtbo":
-                    makedtbo(parts[int(filed)], project_dir)
-                else:
-                    pack_img(parts[int(filed)], imgtype, israw)
-            else:
-                wrap_red("Input error!")
         else:
             wrap_red("Input error!")
+
         input("任意按钮继续")
-        pack_choo()
+        self.unpack_choo()
+
+    def get_parts_can_be_packing(self)->dict:
+        """获取项目内可以被打包的镜像"""
+        fs_config_path = os.path.join(tikpath.PROJECT_PATH,"config")
+        for packs in os.listdir(project_dir):
+
+
+
+    def pack_choo(self):
+        """打包前端"""
+        cls()
+
+        project_dir = tikpath.PROJECT_PATH
+        print(" \033[31m >打包 \033[0m\n")
+        partn = 0
+        parts, types = {}, {}
+        json_ = JsonUtil(project_dir + os.sep + "config" + os.sep + "parts_info").read()
+        if not os.path.exists(project_dir + os.sep + "config"):
+            os.makedirs(project_dir + os.sep + "config")
+        if project_dir:
+            print("   [0]- 打包所有镜像\n")
+            for packs in os.listdir(project_dir):
+                if os.path.isdir(project_dir + os.sep + packs):
+                    if os.path.exists(
+                        project_dir + os.sep + "config" + os.sep + packs + "_fs_config"
+                    ):
+                        partn += 1
+                        parts[partn] = packs
+                        if packs in json_.keys():
+                            typeo = json_[packs]
+                        else:
+                            typeo = "ext"
+                        types[partn] = typeo
+                        print(f"   [{partn}]- {packs} <{typeo}>\n")
+                    elif os.path.exists(project_dir + os.sep + packs + os.sep + "comp"):
+                        partn += 1
+                        parts[partn] = packs
+                        types[partn] = "bootimg"
+                        print(f"   [{partn}]- {packs} <bootimg>\n")
+                    elif os.path.exists(
+                        project_dir + os.sep + "config" + os.sep + "dtbinfo_" + packs
+                    ):
+                        partn += 1
+                        parts[partn] = packs
+                        types[partn] = "dtb"
+                        print(f"   [{partn}]- {packs} <dtb>\n")
+                    elif os.path.exists(
+                        project_dir + os.sep + "config" + os.sep + "dtboinfo_" + packs
+                    ):
+                        partn += 1
+                        parts[partn] = packs
+                        types[partn] = "dtbo"
+                        print(f"   [{partn}]- {packs} <dtbo>\n")
+
+            print("\n\033[33m [66] 打包Super [00]返回\033[0m")
+            print("  --------------------------------------")
+            filed = input("  请输入对应序号：")
+            # default
+            form = "img"
+            # default is raw
+            israw = True
+
+            # pack all images
+            if filed == "0":
+                print_yellow("您的选择是：打包所有镜像")
+                op_menu = input("  输出文件格式[1]raw [2]sparse:")
+                if op_menu == "2":
+                    israw = False
+                imgtype = input("  手动打包所有分区格式为：[1]ext4 [2]erofs [3]f2fs:")
+                match imgtype:
+                    case "1":
+                        ImagePacker()
+                if imgtype == "1":
+                    imgtype = "ext"
+                elif imgtype == "2":
+                    imgtype = "erofs"
+                else:
+                    imgtype = "f2fs"
+
+                for f in track(parts.keys()):
+                    print_yellow(f"打包{parts[f]}...")
+                    if types[f] == "bootimg":
+                        dboot(
+                            project_dir + os.sep + parts[f],
+                            project_dir + os.sep + parts[f] + ".img",
+                        )
+                    elif types[f] == "dtb":
+                        makedtb(parts[f], project_dir)
+                    elif types[f] == "dtbo":
+                        makedtbo(parts[f], project_dir)
+                    else:
+                        pack_img(parts[f], imgtype, israw)
+            elif filed == "66":
+                packsuper(project_dir)
+            elif filed == "00":
+                return
+            elif filed.isdigit():
+                if int(filed) in parts.keys():
+                    if types[int(filed)] not in [
+                        "bootimg",
+                        "dtb",
+                        "dtbo",
+                    ]:
+                        imgtype = input(
+                            "  手动打包所有分区格式为：[1]ext4 [2]erofs [3]f2fs:"
+                        )
+                        if imgtype == "1":
+                            imgtype = "ext"
+                        elif imgtype == "2":
+                            imgtype = "erofs"
+                        else:
+                            imgtype = "f2fs"
+
+                        if input("  输出文件格式[1]raw [2]sparse:") == "2":
+                            israw = False
+
+                    print_yellow(f"打包{parts[int(filed)]}")
+                    if types[int(filed)] == "bootimg":
+                        dboot(
+                            project_dir + os.sep + parts[int(filed)],
+                            project_dir + os.sep + parts[int(filed)] + ".img",
+                        )
+                    elif types[int(filed)] == "dtb":
+                        makedtb(parts[int(filed)], project_dir)
+                    elif types[int(filed)] == "dtbo":
+                        makedtbo(parts[int(filed)], project_dir)
+                    else:
+                        pack_img(parts[int(filed)], imgtype, israw)
+                else:
+                    wrap_red("Input error!")
+            else:
+                wrap_red("Input error!")
+            input("任意按钮继续")
+            self.pack_choo()
 
 
 def dboot(infile, orig):
@@ -564,101 +561,6 @@ def makedtbo(sf, project):
         wrap_red(f"{os.path.basename(sf).split('.')[0]}.img生成失败!")
     else:
         print_green(f"{os.path.basename(sf).split('.')[0]}.img生成完毕!")
-
-
-def pack_img(
-    img_name: str,
-    img_type: str,
-    israw: bool,
-):
-    """
-    打包镜像的核心方法
-    """
-    project_dir = tikpath.PROJECT_PATH
-    # 根据镜像名称获取对应的配置文件
-    file_contexts = tikpath.get_file_contexts(img_name)
-    fs_config = tikpath.get_fs_config(img_name)
-    # 时间戳
-    utc = int(time.time())
-    # 生成路径与待打包的内容
-    out_img = tikpath.get_out_img_path(img_name)
-    in_files = tikpath.get_input_for_image(img_name)
-
-    img_size0 = dirsize(
-        in_files, 1, 3, project_dir + os.sep + "dynamic_partitions_op_list"
-    ).rsize_v
-
-    # patch file_contexts and fs_config
-    fspatch.main(in_files, fs_config)
-    utils.remove_duplicate_lines(fs_config)
-
-    if os.path.exists(file_contexts):
-        contextpatch.main(in_files, file_contexts)
-        utils.remove_duplicate_lines(file_contexts)
-
-    size = img_size0 / int(SetUtils.BLOCKSIZE)
-    size = int(size)
-
-    if img_type == "erofs":
-        os.system(
-            rf"{tikpath.get_binary_path('mkfs.erofs')} \
-                -z{SetUtils.erofslim} \
-                -T {utc} \
-                --mount-point=/{img_name} \
-                --fs-config-file={fs_config} \
-                --file-contexts={file_contexts} \
-                {out_img} \
-                {in_files}"
-        )
-
-    elif img_type == "f2fs":
-        size_f2fs = (54 * 1024 * 1024) + img_size0
-        size_f2fs = int(size_f2fs * 1.15) + 1
-        with open(out_img, "wb") as f:
-            f.truncate(size_f2fs)
-        os.system(
-            rf"{tikpath.get_binary_path('mkfs.f2fs')} {out_img} \
-                -O extra_attr \
-                -O inode_checksum \
-                -O sb_checksum \
-                -O compression \
-                -f"
-        )
-        os.system(
-            rf"{tikpath.get_binary_path('sload.f2fs')} \
-                -f {in_files} \
-                -C {fs_config} \
-                -s {file_contexts} \
-                -t /{img_name} \
-                {out_img} \
-                -c"
-        )
-
-    else:
-        os.system(
-            rf"{tikpath.get_binary_path('mke2fs')} \
-                -O ^has_journal \
-                -L {img_name} \
-                -I 256 \
-                -M /{img_name} \
-                -m 0 \
-                -t ext4 \
-                -b {SetUtils.BLOCKSIZE} \
-                {out_img} \
-                {size}"
-        )
-        os.system(
-            rf"{tikpath.get_binary_path('e2fsdroid')} -e \
-                -T {utc} \
-                -S {file_contexts} \
-                -C {fs_config} \
-                -a /{img_name} \
-                -f {in_files} \
-                {out_img}"
-        )
-
-    if not israw:
-        ImageConverter(out_img).img2simg()
 
 
 def packsuper(project):

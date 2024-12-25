@@ -4,7 +4,7 @@ import os
 import sys
 
 import tikpath
-from core import Tool
+from core import UserInterface
 
 # make the title
 if os.name == "nt":
@@ -19,4 +19,4 @@ if __name__ == "__main__":
     # configure the path
     tikpath.init()
 
-    Tool().main()
+    UserInterface().main()
