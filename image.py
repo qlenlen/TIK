@@ -1,4 +1,5 @@
 import os
+import pathlib
 import shutil
 import subprocess
 import time
@@ -14,6 +15,7 @@ from lib import lpunpack, mkdtboimg, imgextractor
 import tikpath
 import utils
 from lib.lpunpack import SparseImage
+from log import print_yellow, wrap_red, print_green
 from utils import MyPrinter, TypeDetector, SetUtils, JsonUtil
 
 
@@ -72,6 +74,12 @@ class ImagePacker:
         self.content_path = content_path
         self.img_path = content_path + ".img"
         self.img_name = os.path.basename(content_path)
+
+    def get_img_type(self):
+        return TypeDetector(self.img_path).get_type()
+
+    def convert2simg(self):
+        ImageConverter(self.img_path).img2simg()
 
     def pack_ext(self):
         self.deal_with_fsconfig()
@@ -159,6 +167,46 @@ class ImagePacker:
                 -c"
         )
 
+    def pack_dtbo(self):
+        dtbo_dir = self.content_path
+        dts_files_dir = os.path.join(dtbo_dir, "dts_files")
+        dtbo_files_dir = os.path.join(dtbo_dir, "new_dtbo_files")
+        if os.path.exists(dtbo_dir + os.sep + "new_dtbo_files"):
+            shutil.rmtree(dtbo_dir + os.sep + "new_dtbo_files")
+        os.makedirs(dtbo_dir + os.sep + "new_dtbo_files")
+
+        for dts_files in os.listdir(dts_files_dir):
+            new_dtbo_files = dts_files.replace("dts", "dtbo")
+            dtbo_abs = os.path.join(dtbo_files_dir, new_dtbo_files)
+            dts_abs = os.path.join(dts_files_dir, dts_files)
+            print_yellow(f"正在回编译{dts_files}为{new_dtbo_files}")
+            command = [
+                tikpath.get_binary_path("dtc"),
+                "-@",
+                "-I dts",
+                "-O dtb",
+                dts_abs,
+                f"-o {dtbo_abs}",
+            ]
+            subprocess.call(
+                " ".join(command),
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        print_yellow("正在生成dtbo.img...")
+        list_: list[str] = []
+        for b in os.listdir(dtbo_dir + os.sep + "new_dtbo_files"):
+            if b.startswith("dtbo."):
+                list_.append(dtbo_dir + os.sep + "new_dtbo_files" + os.sep + b)
+        list_ = sorted(list_, key=lambda x: int(float(x.rsplit(".", 1)[1])))
+        try:
+            mkdtboimg.create_dtbo(self.img_path, list_, 4096)
+        except (Exception, BaseException):
+            wrap_red(f"{self.img_name}.img生成失败!")
+        else:
+            print_green(f"{self.img_name}.img生成完毕!")
+
     def pack(self):
         pass
 
@@ -205,7 +253,8 @@ class ImageUnpacker:
     def unpack_dtbo(self):
         self.record_parts_info("dtbo")
         # remove the old dir before unpacking
-        shutil.rmtree(self.content_path)
+        if os.path.exists(self.content_path):
+            shutil.rmtree(self.content_path)
 
         dtbo_files_path = os.path.join(self.content_path, "dtbo_files")
         dts_files_path = os.path.join(self.content_path, "dts_files")
@@ -214,14 +263,14 @@ class ImageUnpacker:
 
         self.myprinter.print_yellow("正在解压dtbo.img")
         mkdtboimg.dump_dtbo(
-            self.content_path, os.path.join(self.content_path, "dtbo_files", "dtbo")
+            self.img_path, os.path.join(self.content_path, "dtbo_files", "dtbo")
         )
 
         for dtbo_files in os.listdir(dtbo_files_path):
             if dtbo_files.startswith("dtbo."):
                 dts_files = dtbo_files.replace("dtbo", "dts")
                 self.myprinter.print_yellow(f"正在反编译{dtbo_files}为{dts_files}")
-                dtbofiles = os.path.join(dts_files_path, dtbo_files)
+                dtbofiles = os.path.join(dtbo_files_path, dtbo_files)
                 command = [
                     tikpath.get_binary_path("dtc"),
                     "-@",
@@ -270,11 +319,17 @@ class ImageUnpacker:
         lpunpack.unpack(self.img_path, tikpath.PROJECT_PATH)
 
     def unpack_boot(self):
-        pass
+        bin_path = tikpath.get_binary_path("magiskboot")
+        subprocess.run(f"{bin_path} unpack {self.img_path}", shell=True)
 
     def unpack(self):
         # judge the img type
-        match TypeDetector(self.img_path):
+        match TypeDetector(self.img_path).get_type():
+            case "sparse":
+                ImageConverter(self.img_path).simg2img()
+                self.unpack()
+            case "dtbo":
+                self.unpack_dtbo()
             case "ext":
                 self.unpack_ext()
             case "erofs":

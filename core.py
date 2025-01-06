@@ -241,7 +241,7 @@ class UserInterface:
         match op:
             case "00":
                 self.project()
-            case _:
+            case _ if op.isdigit():
                 ImageUnpacker(num_imgpath.get(op)).unpack()
 
         input("任意按钮继续")
@@ -265,7 +265,7 @@ class UserInterface:
         # 展示所有可打包分区
         num_imgname = {}
         for n, (k, v) in enumerate(parts.items(), 1):
-            self.printer.print_green(f"{n}. {k}<{v}>\n")
+            self.printer.print_green(f"{n}. {k} <{v}>\n")
             num_imgname.update({str(n): k})
 
         self.printer.print_green("\n\033[33m [66] 打包Super [00]返回\033[0m")
@@ -279,21 +279,29 @@ class UserInterface:
             case "66":
                 packsuper(project_dir)
 
-            case _:
-                imgtype = input("  手动打包所有分区格式为：[1]ext4 [2]erofs [3]f2fs:")
+            case _ if op.isdigit():
                 img_name = num_imgname.get(op, "")
                 content_path = os.path.join(tikpath.PROJECT_PATH, img_name)
-                img_path = content_path + ".img"
+
+                packer = ImagePacker(content_path)
+                img_type = packer.get_img_type()
+
+                if img_type == "dtbo":
+                    packer.pack_dtbo()
+                    self.user_continue()
+                    self.pack_choo()
+
+                imgtype = input("  打包分区格式为：[1]ext4 [2]erofs [3]f2fs:")
                 match imgtype:
                     case "1":
-                        ImagePacker(content_path).pack_ext()
+                        packer.pack_ext()
                     case "2":
-                        ImagePacker(content_path).pack_erofs()
+                        packer.pack_erofs()
                     case "3":
-                        ImagePacker(content_path).pack_f2fs()
+                        packer.pack_f2fs()
 
                 if input("  输出文件格式[1]raw [2]sparse:") == "2":
-                    ImageConverter(img_path).img2simg()
+                    packer.convert2simg()
 
         self.pack_choo()
 
@@ -412,47 +420,6 @@ def makedtb(sf, project):
                 with open(os.path.abspath(dtb), "rb") as f:
                     sff.write(f.read())
     print_green("回编译完成！")
-
-
-def makedtbo(sf, project):
-    dtbodir = project + os.sep + os.path.basename(sf).split(".")[0]
-    if os.path.exists(dtbodir + os.sep + "new_dtbo_files"):
-        shutil.rmtree(dtbodir + os.sep + "new_dtbo_files")
-    if os.path.exists(project + os.sep + os.path.basename(sf).split(".")[0] + ".img"):
-        os.remove(project + os.sep + os.path.basename(sf).split(".")[0] + ".img")
-    os.makedirs(dtbodir + os.sep + "new_dtbo_files")
-    for dts_files in os.listdir(dtbodir + os.sep + "dts_files"):
-        new_dtbo_files = dts_files.replace("dts", "dtbo")
-        print_yellow(f"正在回编译{dts_files}为{new_dtbo_files}")
-        dtb_ = dtbodir + os.sep + "dts_files" + os.sep + dts_files
-        command = [
-            tikpath.get_binary_path("dtc"),
-            "-@",
-            "-I dts",
-            "-O dtb",
-            dtb_,
-            f"-o {dtbodir + os.sep + 'new_dtbo_files' + os.sep + new_dtbo_files}",
-        ]
-        subprocess.call(
-            " ".join(command),
-            shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    print_yellow("正在生成dtbo.img...")
-    list_: list[str] = []
-    for b in os.listdir(dtbodir + os.sep + "new_dtbo_files"):
-        if b.startswith("dtbo."):
-            list_.append(dtbodir + os.sep + "new_dtbo_files" + os.sep + b)
-    list_ = sorted(list_, key=lambda x: int(float(x.rsplit(".", 1)[1])))
-    try:
-        mkdtboimg.create_dtbo(
-            project + os.sep + os.path.basename(sf).split(".")[0] + ".img", list_, 4096
-        )
-    except (Exception, BaseException):
-        wrap_red(f"{os.path.basename(sf).split('.')[0]}.img生成失败!")
-    else:
-        print_green(f"{os.path.basename(sf).split('.')[0]}.img生成完毕!")
 
 
 def packsuper(project):
