@@ -96,6 +96,11 @@
   },
   {
     "partition": "system",
+    "path": "system/priv-app/SmartCallProvider",
+    "note": "国外的骚扰拦截"
+  },
+  {
+    "partition": "system",
     "path": "system/priv-app/OMCAgent5",
     "note": "suggested apps"
   },
