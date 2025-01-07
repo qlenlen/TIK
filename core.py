@@ -286,10 +286,16 @@ class UserInterface:
                 packer = ImagePacker(content_path)
                 img_type = packer.get_img_type()
 
-                if img_type == "dtbo":
-                    packer.pack_dtbo()
-                    self.user_continue()
-                    self.pack_choo()
+                match img_type:
+                    case "dtbo":
+                        packer.pack_dtbo()
+                        self.user_continue()
+                        self.pack_choo()
+                    case "vendor_boot":
+                        packer.pack_vendor_boot()
+                        self.user_continue()
+                        self.pack_choo()
+
 
                 imgtype = input("  打包分区格式为：[1]ext4 [2]erofs [3]f2fs:")
                 match imgtype:
@@ -357,70 +363,6 @@ def dboot(infile, orig):
         except (Exception, BaseException):
             print("删除错误...")
         print("Pack Successful...")
-
-
-def unpackboot(file, project):
-    name = os.path.basename(file).replace(".img", "")
-    shutil.rmtree(project + os.sep + name)
-    os.makedirs(project + os.sep + name)
-    os.chdir(project + os.sep + name)
-    if os.system("magiskboot unpack -h %s" % file) != 0:
-        print("Unpack %s Fail..." % file)
-        shutil.rmtree(project + os.sep + name)
-        return
-    if os.access(project + os.sep + name + os.sep + "ramdisk.cpio", os.F_OK):
-        comp = TypeDetector.get_type(project + os.sep + name + os.sep + "ramdisk.cpio")
-        print(f"Ramdisk is {comp}")
-        with open(project + os.sep + name + os.sep + "comp", "w") as f:
-            f.write(comp)
-        if comp != "unknow":
-            os.rename(
-                project + os.sep + name + os.sep + "ramdisk.cpio",
-                project + os.sep + name + os.sep + "ramdisk.cpio.comp",
-            )
-            if (
-                os.system(
-                    "magiskboot decompress %s %s"
-                    % (
-                        project + os.sep + name + os.sep + "ramdisk.cpio.comp",
-                        project + os.sep + name + os.sep + "ramdisk.cpio",
-                    )
-                )
-                != 0
-            ):
-                print("Decompress Ramdisk Fail...")
-                return
-        if not os.path.exists(project + os.sep + name + os.sep + "ramdisk"):
-            os.mkdir(project + os.sep + name + os.sep + "ramdisk")
-        os.chdir(project + os.sep + name + os.sep)
-        print("Unpacking Ramdisk...")
-        os.system("cpio -i -d -F ramdisk.cpio -D ramdisk")
-    else:
-        print("Unpack Done!")
-
-
-def makedtb(sf, project):
-    dtbdir = project + os.sep + sf
-    shutil.rmtree(dtbdir + os.sep + "new_dtb_files")
-    os.makedirs(dtbdir + os.sep + "new_dtb_files")
-    for dts_files in os.listdir(dtbdir + os.sep + "dtb_files"):
-        new_dtb_files = dts_files.split(".")[0]
-        print_yellow(f"正在回编译{dts_files}为{new_dtb_files}.dtb")
-        dtb_ = dtbdir + os.sep + "dtb_files" + os.sep + dts_files
-        if (
-            os.system(
-                f'dtc -@ -I "dts" -O "dtb" "{dtb_}" -o "{dtbdir + os.sep}new_dtb_files{os.sep}{new_dtb_files}.dtb"'
-            )
-            != 0
-        ):
-            wrap_red("回编译dtb失败")
-    with open(project + os.sep + "TI_out" + os.sep + sf, "wb") as sff:
-        for dtb in os.listdir(dtbdir + os.sep + "new_dtb_files"):
-            if dtb.endswith(".dtb"):
-                with open(os.path.abspath(dtb), "rb") as f:
-                    sff.write(f.read())
-    print_green("回编译完成！")
-
 
 def packsuper(project):
     if os.path.exists(project + os.sep + "TI_out" + os.sep + "super.img"):

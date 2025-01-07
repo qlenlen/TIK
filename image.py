@@ -1,5 +1,4 @@
 import os
-import pathlib
 import shutil
 import subprocess
 import time
@@ -11,12 +10,22 @@ from rich.progress import track
 
 import contextpatch
 import fspatch
-from lib import lpunpack, mkdtboimg, imgextractor
 import tikpath
 import utils
+from lib import lpunpack, mkdtboimg, imgextractor
 from lib.lpunpack import SparseImage
 from log import print_yellow, wrap_red, print_green
 from utils import MyPrinter, TypeDetector, SetUtils, JsonUtil
+
+
+def calc_time(func):
+    def wrapper(*args, **kwargs):
+        st = time.time()
+        func(*args, **kwargs)
+        et = time.time()
+        print_yellow(f"<{func.__name__}>耗时: {et - st:.4f}(s)")
+
+    return wrapper
 
 
 class SizeCalculator:
@@ -81,6 +90,7 @@ class ImagePacker:
     def convert2simg(self):
         ImageConverter(self.img_path).img2simg()
 
+    @calc_time
     def pack_ext(self):
         self.deal_with_fsconfig()
         self.deal_with_file_contexts()
@@ -112,6 +122,7 @@ class ImagePacker:
             shell=True,
         )
 
+    @calc_time
     def pack_erofs(self):
         utc = int(time.time())
         subprocess.run(
@@ -137,6 +148,7 @@ class ImagePacker:
             contextpatch.main(self.content_path, file_contexts_path)
             utils.remove_duplicate_lines(file_contexts_path)
 
+    @calc_time
     def pack_f2fs(self):
         self.deal_with_fsconfig()
         self.deal_with_file_contexts()
@@ -167,6 +179,7 @@ class ImagePacker:
                 -c"
         )
 
+    @calc_time
     def pack_dtbo(self):
         dtbo_dir = self.content_path
         dts_files_dir = os.path.join(dtbo_dir, "dts_files")
@@ -207,6 +220,11 @@ class ImagePacker:
         else:
             print_green(f"{self.img_name}.img生成完毕!")
 
+    @calc_time
+    def pack_vendor_boot(self):
+        pass
+
+    @calc_time
     def pack(self):
         pass
 
@@ -216,13 +234,20 @@ class ImageUnpacker:
         self.img_path = img_path
         self.img_name = os.path.basename(img_path)
         self.content_path = img_path.rsplit(".", 1)[0]
+        self.img_type = TypeDetector(self.img_path).get_type()
         self.myprinter = MyPrinter()
 
+    def init_parts_info(self):
+        JsonUtil(tikpath.get_parts_info()).write({})
+        self.myprinter.print_yellow("初始化分区信息表")
+
     def record_parts_info(self, img_type: str):
+        if not os.path.exists(tikpath.get_parts_info()):
+            self.init_parts_info()
         JsonUtil(tikpath.get_parts_info()).update(self.img_name, img_type)
 
+    @calc_time
     def unpack_ext(self):
-        self.record_parts_info("ext")
         base_name = os.path.basename(self.img_path).split(".")[0]
         with rich.Console().status(
             f"[yellow]正在提取{os.path.basename(self.img_path)}[/]"
@@ -231,8 +256,8 @@ class ImageUnpacker:
                 self.img_path, tikpath.PROJECT_PATH + base_name, tikpath.PROJECT_PATH
             )
 
+    @calc_time
     def unpack_erofs(self):
-        self.record_parts_info("erofs")
         bin_path = tikpath.get_binary_path("extract.erofs")
         subprocess.run(
             f"{bin_path} -x \
@@ -241,6 +266,7 @@ class ImageUnpacker:
             shell=True,
         )
 
+    @calc_time
     def unpack_f2fs(self):
         self.record_parts_info("f2fs")
         bin_path = tikpath.get_binary_path("extract.f2fs")
@@ -250,6 +276,7 @@ class ImageUnpacker:
             shell=True,
         )
 
+    @calc_time
     def unpack_dtbo(self):
         self.record_parts_info("dtbo")
         # remove the old dir before unpacking
@@ -293,6 +320,7 @@ class ImageUnpacker:
         self.myprinter.print_green("完成！")
         shutil.rmtree(dtbo_files_path)
 
+    @calc_time
     def unpack_dtb(self):
         self.record_parts_info("dtb")
         dtbdir = self.img_path
@@ -315,9 +343,55 @@ class ImageUnpacker:
                 os.system(f"dtc -@ -I dtb -O dts {dtb} -o {dts}")
         self.myprinter.print_green("反编译完成!")
 
+    @calc_time
     def unpack_super(self):
         lpunpack.unpack(self.img_path, tikpath.PROJECT_PATH)
 
+    @calc_time
+    def unpack_vendor_boot(self):
+        project = tikpath.PROJECT_PATH
+        name = self.img_name
+        shutil.rmtree(project + os.sep + name)
+        os.makedirs(project + os.sep + name)
+        os.chdir(project + os.sep + name)
+        file = ""
+        if os.system("magiskboot unpack -h %s" % file) != 0:
+            print("Unpack %s Fail..." % file)
+            shutil.rmtree(project + os.sep + name)
+            return
+        if os.access(project + os.sep + name + os.sep + "ramdisk.cpio", os.F_OK):
+            comp = TypeDetector.get_type(
+                project + os.sep + name + os.sep + "ramdisk.cpio"
+            )
+            print(f"Ramdisk is {comp}")
+            with open(project + os.sep + name + os.sep + "comp", "w") as f:
+                f.write(comp)
+            if comp != "unknow":
+                os.rename(
+                    project + os.sep + name + os.sep + "ramdisk.cpio",
+                    project + os.sep + name + os.sep + "ramdisk.cpio.comp",
+                )
+                if (
+                    os.system(
+                        "magiskboot decompress %s %s"
+                        % (
+                            project + os.sep + name + os.sep + "ramdisk.cpio.comp",
+                            project + os.sep + name + os.sep + "ramdisk.cpio",
+                        )
+                    )
+                    != 0
+                ):
+                    print("Decompress Ramdisk Fail...")
+                    return
+            if not os.path.exists(project + os.sep + name + os.sep + "ramdisk"):
+                os.mkdir(project + os.sep + name + os.sep + "ramdisk")
+            os.chdir(project + os.sep + name + os.sep)
+            print("Unpacking Ramdisk...")
+            os.system("cpio -i -d -F ramdisk.cpio -D ramdisk")
+        else:
+            print("Unpack Done!")
+
+    @calc_time
     def unpack_boot(self):
         bin_path = tikpath.get_binary_path("magiskboot")
         subprocess.run(f"{bin_path} unpack {self.img_path}", shell=True)
