@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 from argparse import Namespace
+from typing import Literal
 
 import extract_dtb
 import rich
@@ -95,7 +96,7 @@ class ImagePacker:
         self.deal_with_fsconfig()
         self.deal_with_file_contexts()
 
-        ext_size = SizeCalculator(self.content_path).resize()
+        ext_size = ImageSizeCalculator(self.content_path).calculate_size("ext4")
         size = int(ext_size / int(SetUtils.BLOCKSIZE))
         utc = int(time.time())
         subprocess.run(
@@ -153,8 +154,7 @@ class ImagePacker:
         self.deal_with_fsconfig()
         self.deal_with_file_contexts()
 
-        size_f2fs = (54 * 1024 * 1024) + SizeCalculator(self.content_path).resize()
-        size_f2fs = int(size_f2fs)
+        size_f2fs = ImageSizeCalculator(self.content_path)
 
         with open(self.img_path, "wb") as f:
             f.truncate(size_f2fs)
@@ -414,6 +414,53 @@ class ImageUnpacker:
                 self.unpack_super()
             case "boot":
                 self.unpack_boot()
+
+
+class ImageSizeCalculator:
+    def __init__(self, dir_path: str):
+        self.dir_path = dir_path
+        self.partition = os.path.basename(dir_path)
+
+    def calculate_size(self, _type: Literal["ext4", "f2fs"]) -> int:
+        """Calculate the size of the image, unit: Byte"""
+        match _type:
+            case "ext4":
+                return self.calculate_size_ext4()
+            case "f2fs":
+                return self.calculate_size_f2fs()
+
+    def calculate_size_ext4(self) -> int:
+        """计算ext4镜像所需大小，单位为字节 Byte"""
+        dir_size = SizeCalculator(self.dir_path).calculate_dir_size()
+        match self.partition:
+            case "system":
+                return dir_size + 500 * 1024 * 1024
+            case "system_ext":
+                return dir_size + 120 * 1024 * 1024
+            case "product":
+                return dir_size + 50 * 1024 * 1024
+            case "vendor":
+                return dir_size + 100 * 1024 * 1024
+            case _:
+                return SizeCalculator(self.dir_path).resize()
+
+    def calculate_size_f2fs(self) -> int:
+        """计算f2fs镜像所需大小，单位为字节 Byte"""
+        dir_size = SizeCalculator(self.dir_path).calculate_dir_size()
+        min_size = 68 * 1024 * 1024
+        if dir_size < min_size:
+            return min_size
+        match self.partition:
+            case "system":
+                return dir_size + 550 * 1024 * 1024
+            case "system_ext":
+                return dir_size + 120 * 1024 * 1024
+            case "product":
+                return dir_size + 60 * 1024 * 1024
+            case "vendor":
+                return dir_size + 110 * 1024 * 1024
+            case _:
+                return SizeCalculator(self.dir_path).resize()
 
 
 class MyImage(object):
