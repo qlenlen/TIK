@@ -1,0 +1,185 @@
+[[apps]]
+partition = "system"
+folder = "app"
+appName = "HiyaService"
+description = "Hiya is TGY FireWall"
+
+[[apps]]
+partition = "system"
+folder = "app"
+appName = "VoiceAccess"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "traceur"
+description = "Trace your system"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "Rampart"
+description = "Rampart is a security service"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "GoogleFeedback"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "TaskEdgePanel_v3.2"
+description = "Useless edge panel component"
+
+[[apps]]
+partition = "system"
+folder = "app"
+appName = "BixbyWakeup"
+
+[[apps]]
+partition = "system"
+folder = "app"
+appName = "MdecService"
+
+[[apps]]
+partition = "system"
+folder = "app"
+appName = "VTCameraSetting"
+
+[[apps]]
+partition = "system"
+folder = "app"
+appName = "MAPSAgent"
+description = "Samsung recommendation service"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "Bixby"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "BixbyInterpreter"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "BixbyVisionFramework3.5"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "FBInstaller_NS"
+description = "Facebook installer"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "FBServices"
+description = "Facebook services"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "MCFDeviceSync"
+description = "Samsung sync"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "RubinVersion34"
+description = "personalization service"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "SettingsBixby"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "SmartTouchCall"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "SmartCallProvider"
+description = "国外的骚扰拦截"
+
+[[apps]]
+partition = "system"
+folder = "priv-app"
+appName = "OMCAgent5"
+description = "suggested apps"
+
+[[apps]]
+partition = "system_ext"
+folder = "priv-app"
+appName = "GoogleFeedback"
+
+[[apps]]
+partition = "product"
+folder = "priv-app"
+appName = "CarrierWifi"
+
+[[apps]]
+partition = "product"
+folder = "priv-app"
+appName = "Turbo"
+
+[[apps]]
+partition = "product"
+folder = "priv-app"
+appName = "Velvet"
+
+[[apps]]
+partition = "product"
+folder = "priv-app"
+appName = "GoogleRestore"
+
+[[apps]]
+partition = "product"
+folder = "app"
+appName = "AssistantShell"
+
+[[apps]]
+partition = "product"
+folder = "app"
+appName = "GoogleCalendarSyncAdapter"
+
+[[apps]]
+partition = "product"
+folder = "app"
+appName = "GoogleLocationHistory"
+
+[[apps]]
+partition = "product"
+folder = "app"
+appName = "SpeechServicesByGoogle"
+
+[[apps]]
+partition = "product"
+folder = "overlay"
+appName = "DisplayCutoutEmulationCorner"
+
+[[apps]]
+partition = "product"
+folder = "overlay"
+appName = "DisplayCutoutEmulationDouble"
+
+[[apps]]
+partition = "product"
+folder = "overlay"
+appName = "DisplayCutoutEmulationHole"
+
+[[apps]]
+partition = "product"
+folder = "overlay"
+appName = "DisplayCutoutEmulationTall"
+
+[[apps]]
+partition = "product"
+folder = "overlay"
+appName = "DisplayCutoutEmulationWaterfall"

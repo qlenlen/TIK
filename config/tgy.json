@@ -1,177 +1,212 @@
 [
   {
     "partition": "system",
-    "path": "system/app/HiyaService",
-    "note": "Hiya is TGY FireWall"
+    "folder": "app",
+    "appName": "HiyaService",
+    "description": "Hiya is TGY FireWall"
   },
   {
     "partition": "system",
-    "path": "system/app/VoiceAccess",
-    "note": ""
+    "folder": "app",
+    "appName": "VoiceAccess",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/priv-app/traceur",
-    "note": "Trace your system"
+    "folder": "priv-app",
+    "appName": "traceur",
+    "description": "Trace your system"
   },
   {
     "partition": "system",
-    "path": "system/priv-app/Rampart",
-    "note": "Rampart is a security service"
+    "folder": "priv-app",
+    "appName": "Rampart",
+    "description": "Rampart is a security service"
   },
   {
     "partition": "system",
-    "path": "system/priv-app/GoogleFeedback",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "GoogleFeedback",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/priv-app/TaskEdgePanel_v3.2",
-    "note": "Useless edge panel component"
+    "folder": "priv-app",
+    "appName": "TaskEdgePanel_v3.2",
+    "description": "Useless edge panel component"
   },
   {
     "partition": "system",
-    "path": "system/app/BixbyWakeup",
-    "note": ""
+    "folder": "app",
+    "appName": "BixbyWakeup",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/app/MdecService",
-    "note": ""
+    "folder": "app",
+    "appName": "MdecService",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/app/VTCameraSetting",
-    "note": ""
+    "folder": "app",
+    "appName": "VTCameraSetting",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/app/MAPSAgent",
-    "note": "Samsung recommendation service"
+    "folder": "app",
+    "appName": "MAPSAgent",
+    "description": "Samsung recommendation service"
   },
   {
     "partition": "system",
-    "path": "system/priv-app/Bixby",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "Bixby",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/priv-app/BixbyInterpreter",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "BixbyInterpreter",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/priv-app/BixbyVisionFramework3.5",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "BixbyVisionFramework3.5",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/priv-app/FBInstaller_NS",
-    "note": "Facebook installer"
+    "folder": "priv-app",
+    "appName": "FBInstaller_NS",
+    "description": "Facebook installer"
   },
   {
     "partition": "system",
-    "path": "system/priv-app/FBServices",
-    "note": "Facebook services"
+    "folder": "priv-app",
+    "appName": "FBServices",
+    "description": "Facebook services"
   },
   {
     "partition": "system",
-    "path": "system/priv-app/MCFDeviceSync",
-    "note": "Samsung sync"
+    "folder": "priv-app",
+    "appName": "MCFDeviceSync",
+    "description": "Samsung sync"
   },
   {
     "partition": "system",
-    "path": "system/priv-app/RubinVersion34",
-    "note": "personalization service"
+    "folder": "priv-app",
+    "appName": "RubinVersion34",
+    "description": "personalization service"
   },
   {
     "partition": "system",
-    "path": "system/priv-app/SettingsBixby",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "SettingsBixby",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/priv-app/SmartTouchCall",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "SmartTouchCall",
+    "description": ""
   },
   {
     "partition": "system",
-    "path": "system/priv-app/SmartCallProvider",
-    "note": "国外的骚扰拦截"
+    "folder": "priv-app",
+    "appName": "SmartCallProvider",
+    "description": "国外的骚扰拦截"
   },
   {
     "partition": "system",
-    "path": "system/priv-app/OMCAgent5",
-    "note": "suggested apps"
+    "folder": "priv-app",
+    "appName": "OMCAgent5",
+    "description": "suggested apps"
   },
   {
     "partition": "system_ext",
-    "path": "priv-app/GoogleFeedback",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "GoogleFeedback",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "priv-app/CarrierWifi",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "CarrierWifi",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "priv-app/Turbo",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "Turbo",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "priv-app/Velvet",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "Velvet",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "priv-app/GoogleRestore",
-    "note": ""
+    "folder": "priv-app",
+    "appName": "GoogleRestore",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "app/AssistantShell",
-    "note": ""
+    "folder": "app",
+    "appName": "AssistantShell",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "app/GoogleCalendarSyncAdapter",
-    "note": ""
+    "folder": "app",
+    "appName": "GoogleCalendarSyncAdapter",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "app/GoogleLocationHistory",
-    "note": ""
+    "folder": "app",
+    "appName": "GoogleLocationHistory",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "app/SpeechServicesByGoogle",
-    "note": ""
+    "folder": "app",
+    "appName": "SpeechServicesByGoogle",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "overlay/DisplayCutoutEmulationCorner",
-    "note": ""
+    "folder": "overlay",
+    "appName": "DisplayCutoutEmulationCorner",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "overlay/DisplayCutoutEmulationDouble",
-    "note": ""
+    "folder": "overlay",
+    "appName": "DisplayCutoutEmulationDouble",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "overlay/DisplayCutoutEmulationHole",
-    "note": ""
+    "folder": "overlay",
+    "appName": "DisplayCutoutEmulationHole",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "overlay/DisplayCutoutEmulationTall",
-    "note": ""
+    "folder": "overlay",
+    "appName": "DisplayCutoutEmulationTall",
+    "description": ""
   },
   {
     "partition": "product",
-    "path": "overlay/DisplayCutoutEmulationWaterfall",
-    "note": ""
+    "folder": "overlay",
+    "appName": "DisplayCutoutEmulationWaterfall",
+    "description": ""
   }
 ]

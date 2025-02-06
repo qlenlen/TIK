@@ -1,5 +1,6 @@
 import os
 import re
+import tomllib
 
 from utils import MyPrinter
 
@@ -44,6 +45,12 @@ class Fstab:
     def __write_file(self):
         self.file.write(self.fstr)
 
+    def is_need_avb(self)-> bool:
+        ...
+
+    def is_need_decryption(self)-> bool:
+        ...
+
     def remove_avb(self):
         for pattern in self.patterns:
             self.fstr = pattern.sub("", self.fstr)
@@ -69,8 +76,8 @@ class Fstab:
                 required_mount_types -= mount_type
 
             if required_mount_types:
-                for mount_type in required_mount_types:
-                    matchlis.append(model.replace("erofs", mount_type))
+                for required_type in required_mount_types:
+                    matchlis.append(model.replace(mount_type, required_type))
             return matchlis
 
         for partition in [
@@ -91,10 +98,15 @@ class Fstab:
 
 
 # 使用示例
-with Fstab("fstab.qcom") as fstab:
-    fstab.remove_avb()
-    fstab.remove_encryption()
-    fstab.fill_mount_point()
+# with Fstab("fstab.qcom") as fstab:
+#     fstab.remove_avb()
+#     fstab.remove_encryption()
+#     fstab.fill_mount_point()
 
 
-def slim_partition(): ...
+def slim_partition():
+    with open("config/tgy.toml", "rb") as file:
+        a = tomllib.load(file)
+        print(a)
+
+slim_partition()
