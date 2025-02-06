@@ -468,3 +468,33 @@ class MyImage(object):
         self.img_name = img_name
         self.img_path = os.path.join(tikpath.PROJECT_PATH, img_name)
         self.img_type = TypeDetector(self.img_path).get_type().upper()
+
+
+class Kernel:
+    def __init__(self, kernel_path: str):
+        self.kernel_path = kernel_path
+
+    def read_version(self):
+        return os.system('strings resource/kernel/kernel | grep -i "Linux version"')
+
+    def copy_to(self, target_path: str):
+        shutil.copy(self.kernel_path, target_path)
+
+
+class BootImg:
+    def __init__(self, img_path: str):
+        self.backup_dir = os.getcwd()
+        self.img_path = img_path
+
+    def __enter__(self):
+        os.chdir(os.path.dirname(self.img_path))
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        os.chdir(self.backup_dir)
+
+    def unpack(self):
+        os.system(f"magiskboot unpack {self.img_path}")
+
+    def repack(self):
+        os.system(f"magiskboot repack {self.img_path}")

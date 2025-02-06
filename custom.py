@@ -1,13 +1,9 @@
-import os
 import re
 import tomllib
 
 from utils import MyPrinter
 
 myprinter = MyPrinter()
-
-
-import re
 
 
 class Fstab:
@@ -45,11 +41,9 @@ class Fstab:
     def __write_file(self):
         self.file.write(self.fstr)
 
-    def is_need_avb(self)-> bool:
-        ...
+    def is_need_avb(self) -> bool: ...
 
-    def is_need_decryption(self)-> bool:
-        ...
+    def is_need_decryption(self) -> bool: ...
 
     def remove_avb(self):
         for pattern in self.patterns:
@@ -106,7 +100,20 @@ class Fstab:
 
 def slim_partition():
     with open("config/tgy.toml", "rb") as file:
-        a = tomllib.load(file)
-        print(a)
+        apps = tomllib.load(file).get("apps")
 
-slim_partition()
+    for app in apps:
+        partition = app.get("partition")
+        folder = app.get("folder")
+        appName = app.get("appName")
+        description = app.get("description")
+        print(
+            f"Partition: {partition}; Folder: {folder}; AppName: {appName}; Description: {description}"
+        )
+
+
+def deal_with_vbmetaimg(img_path: str):
+    with open(img_path, "rb+") as file:
+        file.seek(123, 0)
+        file.write(b"\x02")
+    myprinter.print_green(f"Deal with {img_path} successfully!")
