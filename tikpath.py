@@ -1,6 +1,14 @@
+"""统一路径管理
+
+"""
+
 import os
 import platform
+import pathlib
 
+# 记录TIK可执行文件的根路径
+tik_path = pathlib.Path(__file__).parent.absolute()
+print(tik_path)
 TIK_PATH = ""
 BIN_PATH = ""
 PROJECT_PATH = ""

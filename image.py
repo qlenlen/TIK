@@ -18,6 +18,10 @@ from lib.lpunpack import SparseImage
 from log import print_yellow, wrap_red, print_green
 from utils import MyPrinter, TypeDetector, SetUtils, JsonUtil
 
+from utils import MyPrinter
+
+myprinter = MyPrinter()
+
 
 def calc_time(func):
     def wrapper(*args, **kwargs):
@@ -488,13 +492,21 @@ class BootImg:
 
     def __enter__(self):
         os.chdir(os.path.dirname(self.img_path))
+        myprinter.print_red(f"work dir -> {os.getcwd()}")
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         os.chdir(self.backup_dir)
+        myprinter.print_red(f"work dir -> {os.getcwd()}")
 
     def unpack(self):
         os.system(f"magiskboot unpack {self.img_path}")
 
     def repack(self):
         os.system(f"magiskboot repack {self.img_path}")
+
+
+if __name__ == "__main__":
+    tikpath.init()
+    tikpath.set_project_path("TEST")
+    ImageUnpacker("./TEST/AP/vendor_boot.img").unpack_vendor_boot()
