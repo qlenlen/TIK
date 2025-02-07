@@ -22,7 +22,7 @@ def info(msg: str):
 
 
 # maybe /home/rom/CHN (contains partitions to be handled)
-STORE_PATH = "."
+STORE_PATH = "../.."
 
 PARTITIONS = ["system", "system_ext", "product"]
 
@@ -67,17 +67,3 @@ class DebloatStuff:
         abs_path.unlink()
         return 0
 
-
-STORE_PATH = "/home/rom/TIK-4-116-linux/CHC4"
-
-with open("de_config/tgy.json") as file:
-    configs = json.loads(file.read())
-
-for c in configs:
-    ds = DebloatStuff(STORE_PATH, c.get("partition"), c.get("path"), c.get("note"))
-    ds.show_info()
-    res = ds.delete()
-    if res == 0:
-        success(f"Remove {ds.get_abs_path()} successfully")
-    else:
-        warn(f"Remove {ds.get_abs_path()} failed")

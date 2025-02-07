@@ -2,7 +2,7 @@ import os
 import re
 import struct
 
-import ext4
+from src.lib import ext4
 
 if os.name == "nt":
     from ctypes.wintypes import LPCSTR, DWORD
@@ -11,7 +11,7 @@ if os.name == "nt":
 
 from timeit import default_timer as dti
 
-from utils import simg2img
+from src.util.utils import simg2img
 
 try:
     from pycase import ensure_dir_case_sensitive

@@ -6,36 +6,53 @@ import os
 import platform
 import pathlib
 
-# 记录TIK可执行文件的根路径
-tik_path = pathlib.Path(__file__).parent.absolute()
-print(tik_path)
-TIK_PATH = ""
-BIN_PATH = ""
+from src.util.utils import MyPrinter
+
+myprinter = MyPrinter()
+
+TIK_PATH = pathlib.Path(__file__).parent.absolute()
+BIN_PATH = os.path.join(TIK_PATH, "bin", platform.machine(), platform.system())
+
 PROJECT_PATH = ""
+OUTPUT_PATH = ""
 
 
 def init():
-    global TIK_PATH, BIN_PATH
-    TIK_PATH = os.getcwd()
-    BIN_PATH = TIK_PATH + os.sep + "bin"
+    myprinter.print_red(f"TIK_PATH -> {TIK_PATH}")
+    myprinter.print_red(f"BIN_PATH -> {BIN_PATH}")
+
+
+def get_project_path():
+    if PROJECT_PATH:
+        return PROJECT_PATH
+    else:
+        raise ProjectNotSetError()
 
 
 def get_project_name():
-    return os.path.basename(PROJECT_PATH)
+    if PROJECT_PATH:
+        return os.path.basename(PROJECT_PATH)
+    else:
+        raise ProjectNotSetError()
 
 
-def set_project_path(project_name: str):
-    global PROJECT_PATH
-    PROJECT_PATH = os.path.join(os.getcwd(), project_name)
+def get_img_within_project(img_name: str) -> str:
+    if PROJECT_PATH:
+        return os.path.join(PROJECT_PATH, f"{img_name}.img")
+    else:
+        raise ProjectNotSetError()
 
 
-def get_binary_path(bname: str):
-    arch_type = platform.machine()
-    os_type = platform.system()
+def set_project(project_name: str):
+    global PROJECT_PATH, OUTPUT_PATH
+    PROJECT_PATH = os.path.join(TIK_PATH, project_name)
+    OUTPUT_PATH = os.path.join(PROJECT_PATH, "TI_out")
+    myprinter.print_red(f"PROJECT_PATH -> {PROJECT_PATH}")
+    myprinter.print_red(f"OUTPUT_PATH -> {OUTPUT_PATH}")
 
-    # find binary from here
-    bin_path = os.path.join(BIN_PATH, os_type, arch_type) + os.sep
-    return os.path.join(bin_path, bname)
+
+def get_binary(bname: str):
+    return os.path.join(BIN_PATH, bname)
 
 
 def get_parts_info():
@@ -50,13 +67,22 @@ def get_fs_config(img_name: str):
     return os.path.join(PROJECT_PATH, "config", f"{img_name}_fs_config")
 
 
-def get_output_path():
-    return os.path.join(PROJECT_PATH, "TI_out")
-
-
 def get_out_img_path(img_name: str):
-    return os.path.join(PROJECT_PATH, "TI_out", f"{img_name}.img")
+    if OUTPUT_PATH:
+        return os.path.join(OUTPUT_PATH, f"{img_name}.img")
+    else:
+        raise ProjectNotSetError()
 
 
-def get_input_for_image(img_name: str):
+def get_image_content(img_name: str):
     return os.path.join(PROJECT_PATH, img_name)
+
+
+class ProjectNotSetError(Exception):
+    def __init__(self):
+        super().__init__("项目尚未初始化")
+
+
+if __name__ == "__main__":
+    set_project("TEST")
+    get_project_name()

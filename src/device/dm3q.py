@@ -4,16 +4,15 @@ Samsung S23 Ultra 一键生成 QyzROM
 
 import os
 import pathlib
-import prepare
 import custom
-from image import Kernel, BootImg
+from src.image import Kernel, BootImg
 
 from utils import MyPrinter
 
 myprinter = MyPrinter()
 
-work = pathlib.Path("TEST")
-resource = pathlib.Path("resource")
+work = pathlib.Path("../../TEST")
+resource = pathlib.Path("../../resource")
 
 WORK = work.absolute()
 RESOURCE = resource.absolute()

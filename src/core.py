@@ -1,22 +1,18 @@
 import json
 import os
 import shutil
-import subprocess
 import sys
-from dataclasses import Field, field
 
 import requests
-from rich.progress import track
 
-import banner
+from src.custom import banner
 import custom
-from lib import mkdtboimg
 import tikpath
-import utils
-from api import cls, dir_has
-from image import ImageUnpacker, ImagePacker, ImageConverter, MyImage
-from log import *
-from utils import JsonUtil, simg2img, versize, SetUtils, TypeDetector
+from src.util import utils
+from src.util.api import cls, dir_has
+from src.image.image import ImageUnpacker, ImagePacker, MyImage
+from src.util.log import *
+from src.util.utils import JsonUtil, simg2img, versize, SetUtils, TypeDetector
 
 
 def greet():
@@ -132,7 +128,7 @@ class UserInterface:
                 if op_pro in self.user_projects.keys():
                     # initialize the project
                     project_name = self.user_projects.get(op_pro, "")
-                    tikpath.set_project_path(project_name)
+                    tikpath.set_project(project_name)
                     self.project()
                 else:
                     print_red("  Input error!")
@@ -152,7 +148,7 @@ class UserInterface:
         self.printer.print_red("> 项目菜单\n")
         (
             print(f"  项目：{project_name}\033[91m(不完整)\033[0m\n")
-            if not os.path.exists(os.path.abspath("config"))
+            if not os.path.exists(os.path.abspath("../config"))
             else print(f"  项目：{project_name}\n")
         )
 
@@ -296,7 +292,6 @@ class UserInterface:
                         self.user_continue()
                         self.pack_choo()
 
-
                 imgtype = input("  打包分区格式为：[1]ext4 [2]erofs [3]f2fs:")
                 match imgtype:
                     case "1":
@@ -326,7 +321,7 @@ def dboot(infile, orig):
 
         os.system(
             'busybox ash -c "find | sed 1d | %s -H newc -R 0:0 -o -F ../ramdisk-new.cpio"'
-            % {tikpath.get_binary_path("cpio")},
+            % {tikpath.get_binary("cpio")},
         )
         os.chdir(infile)
         with open("comp", "r", encoding="utf-8") as compf:
@@ -363,6 +358,7 @@ def dboot(infile, orig):
         except (Exception, BaseException):
             print("删除错误...")
         print("Pack Successful...")
+
 
 def packsuper(project):
     if os.path.exists(project + os.sep + "TI_out" + os.sep + "super.img"):
@@ -426,118 +422,4 @@ def packsuper(project):
     else:
         supersize = input("请输入super分区大小（字节数）:")
     print_yellow("打包到TI_out/super.img...")
-    insuper(
-        project + os.sep + "super",
-        project + os.sep + "TI_out" + os.sep + "super.img",
-        supersize,
-        supertype,
-        ifsparse,
-        isreadonly,
-    )
-
-
-def insuper(imgdir, outputimg, ssize, stype, sparsev, isreadonly):
-    attr = "readonly" if isreadonly == "1" else "none"
-    group_size_a = 0
-    group_size_b = 0
-    for root, dirs, files in os.walk(imgdir):
-        for file in files:
-            file_path = os.path.join(root, file)
-            if os.path.isfile(file_path) and os.path.getsize(file_path) == 0:
-                os.remove(file_path)
-    superpa = (
-        f"--metadata-size {SetUtils.metadatasize} --super-name {SetUtils.supername} "
-    )
-    if sparsev == "1":
-        superpa += "--sparse "
-    if stype == "VAB":
-        superpa += "--virtual-ab "
-    superpa += f"-block-size={SetUtils.SBLOCKSIZE} "
-    for imag in os.listdir(imgdir):
-        if imag.endswith(".img"):
-            image = imag.replace("_a.img", "").replace("_b.img", "").replace(".img", "")
-            if (
-                f"partition {image}:{attr}" not in superpa
-                and f"partition {image}_a:{attr}" not in superpa
-            ):
-                if stype in ["VAB", "AB"]:
-                    if os.path.isfile(
-                        imgdir + os.sep + image + "_a.img"
-                    ) and os.path.isfile(imgdir + os.sep + image + "_b.img"):
-                        img_sizea = os.path.getsize(imgdir + os.sep + image + "_a.img")
-                        img_sizeb = os.path.getsize(imgdir + os.sep + image + "_b.img")
-                        group_size_a += img_sizea
-                        group_size_b += img_sizeb
-                        superpa += f"--partition {image}_a:{attr}:{img_sizea}:{SetUtils.super_group}_a --image {image}_a={imgdir}{os.sep}{image}_a.img --partition {image}_b:{attr}:{img_sizeb}:{SetUtils.super_group}_b --image {image}_b={imgdir}{os.sep}{image}_b.img "
-                    else:
-                        if not os.path.exists(
-                            imgdir + os.sep + image + ".img"
-                        ) and os.path.exists(imgdir + os.sep + image + "_a.img"):
-                            os.rename(
-                                imgdir + os.sep + image + "_a.img",
-                                imgdir + os.sep + image + ".img",
-                            )
-
-                        img_size = os.path.getsize(imgdir + os.sep + image + ".img")
-                        group_size_a += img_size
-                        group_size_b += img_size
-                        superpa += f"--partition {image}_a:{attr}:{img_size}:{SetUtils.super_group}_a --image {image}_a={imgdir}{os.sep}{image}.img --partition {image}_b:{attr}:0:{SetUtils.super_group}_b "
-                else:
-                    if not os.path.exists(
-                        imgdir + os.sep + image + ".img"
-                    ) and os.path.exists(imgdir + os.sep + image + "_a.img"):
-                        os.rename(
-                            imgdir + os.sep + image + "_a.img",
-                            imgdir + os.sep + image + ".img",
-                        )
-
-                    img_size = os.path.getsize(imgdir + os.sep + image + ".img")
-                    superpa += f"--partition {image}:{attr}:{img_size}:{SetUtils.super_group} --image {image}={imgdir}{os.sep}{image}.img "
-                    group_size_a += img_size
-                print(f"已添加分区:{image}")
-    supersize = ssize
-    if not supersize:
-        supersize = group_size_a + 4096000
-    superpa += f"--device super:{supersize} "
-    if stype in ["VAB", "AB"]:
-        superpa += "--metadata-slots 3 "
-        superpa += f" --group {SetUtils.super_group}_a:{supersize} "
-        superpa += f" --group {SetUtils.super_group}_b:{supersize} "
-    else:
-        superpa += "--metadata-slots 2 "
-        superpa += f" --group {SetUtils.super_group}:{supersize} "
-    superpa += f"{SetUtils.fullsuper} {SetUtils.autoslotsuffixing} --output {outputimg}"
-    (
-        wrap_red("创建super.img失败！")
-        if os.system(f"lpmake {superpa}") != 0
-        else print_green("成功创建super.img!")
-    )
-
-
-def unpack(file, info, project):
-    if not os.path.exists(file):
-        file = os.path.join(project, file)
-
-    print_yellow(f"[{info}]解包{os.path.basename(file)}中...")
-
-    if info == "sparse":
-        simg2img(os.path.join(project, file))
-        ImageUnpacker(file).unpack()
-    elif info == "dtbo":
-        ImageUnpacker(file).unpack_dtbo()
-    elif info == "dtb":
-        ImageUnpacker(file).unpack_dtb()
-    elif info == "img":
-        ImageUnpacker(file).unpack()
-    elif info == "ext":
-        ImageUnpacker(file).unpack_ext()
-    elif info == "erofs":
-        ImageUnpacker(file).unpack_erofs()
-    elif info == "f2fs" and os.name == "posix":
-        ImageUnpacker(file).unpack_f2fs()
-    elif info == "super":
-        ImageUnpacker(file).unpack_super()
-    elif info in ["boot", "vendor_boot"]:
-        unpackboot(os.path.abspath(file), project)
-    else:
-        wrap_red("未知格式！")
+    pass

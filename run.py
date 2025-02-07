@@ -4,7 +4,7 @@ import os
 import sys
 
 import tikpath
-from core import UserInterface
+from src.core import UserInterface
 
 # make the title
 if os.name == "nt":

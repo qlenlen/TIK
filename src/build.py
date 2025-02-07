@@ -3,7 +3,7 @@ import platform
 import shutil
 import zipfile
 
-import banner
+from src.custom import banner
 
 
 def zip_folder(folder_path: str, name: str):
@@ -88,4 +88,4 @@ if os.name == "posix":
             print(f"Chmod {os.path.join(root, i)}")
             os.system(f"chmod a+x {os.path.join(root, i)}")
 
-zip_folder(".", name)
+zip_folder("..", name)

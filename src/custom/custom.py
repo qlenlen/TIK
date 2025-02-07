@@ -99,7 +99,7 @@ class Fstab:
 
 
 def slim_partition():
-    with open("config/tgy.toml", "rb") as file:
+    with open("../../config/tgy.toml", "rb") as file:
         apps = tomllib.load(file).get("apps")
 
     for app in apps:
